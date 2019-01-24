@@ -30,7 +30,7 @@ import org.apache.poi.poifs.crypt.Decryptor;
 import org.apache.poi.poifs.filesystem.DirectoryNode;
 import org.apache.poi.poifs.filesystem.DocumentFactoryHelper;
 import org.apache.poi.poifs.filesystem.FileMagic;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.poifs.filesystem.OfficeXmlFileException;
 import org.apache.poi.util.IOUtils;
 
@@ -38,13 +38,16 @@ public class SlideShowFactory {
     /**
      * Creates a SlideShow from the given NPOIFSFileSystem.
      *
-     * @param fs The {@link NPOIFSFileSystem} to read the document from
+     * @param fs The {@link POIFSFileSystem} to read the document from
      *
      * @return The created SlideShow
      *
      * @throws IOException if an error occurs while reading the data
      */
-    public static SlideShow<?,?> create(NPOIFSFileSystem fs) throws IOException {
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(POIFSFileSystem fs) throws IOException {
         return create(fs, null);
     }
 
@@ -52,25 +55,65 @@ public class SlideShowFactory {
      * Creates a SlideShow from the given NPOIFSFileSystem, which may
      * be password protected
      *
-     * @param fs The {@link NPOIFSFileSystem} to read the document from
+     * @param fs The {@link POIFSFileSystem} to read the document from
      * @param password The password that should be used or null if no password is necessary.
      *
      * @return The created SlideShow
      *
      * @throws IOException if an error occurs while reading the data
      */
-    public static SlideShow<?,?> create(final NPOIFSFileSystem fs, String password) throws IOException {
-        DirectoryNode root = fs.getRoot();
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(final POIFSFileSystem fs, String password) throws IOException {
+        return create(fs.getRoot(), password);
+    }
 
+    /**
+     * Creates a SlideShow from the given NPOIFSFileSystem.
+     *
+     * @param root The {@link DirectoryNode} to start reading the document from
+     *
+     * @return The created SlideShow
+     *
+     * @throws IOException if an error occurs while reading the data
+     */
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(final DirectoryNode root) throws IOException {
+        return create(root, null);
+    }
+
+
+    /**
+     * Creates a SlideShow from the given NPOIFSFileSystem, which may
+     * be password protected
+     *
+     * @param root The {@link DirectoryNode} to start reading the document from
+     * @param password The password that should be used or null if no password is necessary.
+     *
+     * @return The created SlideShow
+     *
+     * @throws IOException if an error occurs while reading the data
+     */
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(final DirectoryNode root, String password) throws IOException {
         // Encrypted OOXML files go inside OLE2 containers, is this one?
         if (root.hasEntry(Decryptor.DEFAULT_POIFS_ENTRY)) {
             InputStream stream = null;
             try {
-                stream = DocumentFactoryHelper.getDecryptedStream(fs, password);
+                stream = DocumentFactoryHelper.getDecryptedStream(root, password);
 
                 return createXSLFSlideShow(stream);
             } finally {
                 IOUtils.closeQuietly(stream);
+
+                // as we processed the full stream already, we can close the filesystem here
+                // otherwise file handles are leaked
+                root.getFileSystem().close();
             }
         }
 
@@ -82,7 +125,7 @@ public class SlideShowFactory {
             passwordSet = true;
         }
         try {
-            return createHSLFSlideShow(fs);
+            return createHSLFSlideShow(root);
         } finally {
             if (passwordSet) {
                 Biff8EncryptionKey.setCurrentUserPassword(null);
@@ -109,7 +152,10 @@ public class SlideShowFactory {
      *  @throws IOException if an error occurs while reading the data
      *  @throws EncryptedDocumentException If the SlideShow given is password protected
      */
-    public static SlideShow<?,?> create(InputStream inp) throws IOException, EncryptedDocumentException {
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(InputStream inp) throws IOException, EncryptedDocumentException {
         return create(inp, null);
     }
 
@@ -133,18 +179,21 @@ public class SlideShowFactory {
      *  @throws IOException if an error occurs while reading the data
      *  @throws EncryptedDocumentException If the wrong password is given for a protected file
      */
-    public static SlideShow<?,?> create(InputStream inp, String password) throws IOException, EncryptedDocumentException {
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(InputStream inp, String password) throws IOException, EncryptedDocumentException {
         InputStream is = FileMagic.prepareToCheckMagic(inp);
         FileMagic fm = FileMagic.valueOf(is);
         
         switch (fm) {
         case OLE2:
-            NPOIFSFileSystem fs = new NPOIFSFileSystem(is);
+            POIFSFileSystem fs = new POIFSFileSystem(is);
             return create(fs, password);
         case OOXML:
             return createXSLFSlideShow(is);
         default:
-            throw new IllegalArgumentException("Your InputStream was neither an OLE2 stream, nor an OOXML stream");
+            throw new IOException("Your InputStream was neither an OLE2 stream, nor an OOXML stream");
         }
     }
 
@@ -161,7 +210,10 @@ public class SlideShowFactory {
      *  @throws IOException if an error occurs while reading the data
      *  @throws EncryptedDocumentException If the SlideShow given is password protected
      */
-    public static SlideShow<?,?> create(File file) throws IOException, EncryptedDocumentException {
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(File file) throws IOException, EncryptedDocumentException {
         return create(file, null);
     }
 
@@ -180,7 +232,10 @@ public class SlideShowFactory {
      *  @throws IOException if an error occurs while reading the data
      *  @throws EncryptedDocumentException If the wrong password is given for a protected file
      */
-    public static SlideShow<?,?> create(File file, String password) throws IOException, EncryptedDocumentException {
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(File file, String password) throws IOException, EncryptedDocumentException {
         return create(file, password, false);
     }
 
@@ -201,14 +256,17 @@ public class SlideShowFactory {
      *  @throws IOException if an error occurs while reading the data
      *  @throws EncryptedDocumentException If the wrong password is given for a protected file
      */
-    public static SlideShow<?,?> create(File file, String password, boolean readOnly) throws IOException, EncryptedDocumentException {
+    public static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> create(File file, String password, boolean readOnly) throws IOException, EncryptedDocumentException {
         if (!file.exists()) {
             throw new FileNotFoundException(file.toString());
         }
 
-        NPOIFSFileSystem fs = null;
+        POIFSFileSystem fs = null;
         try {
-            fs = new NPOIFSFileSystem(file, readOnly);
+            fs = new POIFSFileSystem(file, readOnly);
             return create(fs, password);
         } catch(OfficeXmlFileException e) {
             IOUtils.closeQuietly(fs);
@@ -219,18 +277,27 @@ public class SlideShowFactory {
         }
     }
     
-    protected static SlideShow<?,?> createHSLFSlideShow(Object... args) throws IOException, EncryptedDocumentException {
+    private static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> createHSLFSlideShow(Object... args) throws IOException, EncryptedDocumentException {
         return createSlideShow("org.apache.poi.hslf.usermodel.HSLFSlideShowFactory", args);
     }
     
-    protected static SlideShow<?,?> createXSLFSlideShow(Object... args) throws IOException, EncryptedDocumentException {
+    private static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> createXSLFSlideShow(Object... args) throws IOException, EncryptedDocumentException {
         return createSlideShow("org.apache.poi.xslf.usermodel.XSLFSlideShowFactory", args);
     }
-    
-    protected static SlideShow<?,?> createSlideShow(String factoryClass, Object args[]) throws IOException, EncryptedDocumentException {
+
+    private static <
+        S extends Shape<S,P>,
+        P extends TextParagraph<S,P,? extends TextRun>
+    > SlideShow<S,P> createSlideShow(String factoryClass, Object[] args) throws IOException, EncryptedDocumentException {
         try {
-            Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(factoryClass);
-            Class<?> argsClz[] = new Class<?>[args.length];
+            Class<?> clazz = SlideShowFactory.class.getClassLoader().loadClass(factoryClass);
+            Class<?>[] argsClz = new Class<?>[args.length];
             int i=0;
             for (Object o : args) {
                 Class<?> c = o.getClass();
@@ -242,7 +309,7 @@ public class SlideShowFactory {
                 argsClz[i++] = c;
             }
             Method m = clazz.getMethod("createSlideShow", argsClz);
-            return (SlideShow<?,?>)m.invoke(null, args);
+            return (SlideShow<S,P>)m.invoke(null, args);
         } catch (InvocationTargetException e) {
             Throwable t = e.getCause();
             if (t instanceof IOException) {
@@ -251,6 +318,8 @@ public class SlideShowFactory {
                 throw (EncryptedDocumentException)t;
             } else if (t instanceof OldFileFormatException) {
                 throw (OldFileFormatException)t;
+            } else if (t instanceof RuntimeException) {
+                throw (RuntimeException)t;
             } else {
                 throw new IOException(t);
             }

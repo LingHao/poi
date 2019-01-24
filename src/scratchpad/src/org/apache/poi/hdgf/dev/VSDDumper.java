@@ -28,7 +28,7 @@ import org.apache.poi.hdgf.pointers.Pointer;
 import org.apache.poi.hdgf.streams.ChunkStream;
 import org.apache.poi.hdgf.streams.PointerContainingStream;
 import org.apache.poi.hdgf.streams.Stream;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 
 /**
  * Developer helper class to dump out the pointer+stream structure
@@ -51,7 +51,7 @@ public final class VSDDumper {
 			System.exit(1);
 		}
 
-		NPOIFSFileSystem poifs = new NPOIFSFileSystem(new File(args[0]));
+		POIFSFileSystem poifs = new POIFSFileSystem(new File(args[0]));
 		try {
 			HDGFDiagram hdgf = new HDGFDiagram(poifs);
 
@@ -87,7 +87,7 @@ public final class VSDDumper {
 		dumpVal("First few bytes are", ds, indent+1);
 
 		if (stream instanceof PointerContainingStream) {
-		    Stream streams[] = ((PointerContainingStream)stream).getPointedToStreams();
+            Stream[] streams = ((PointerContainingStream) stream).getPointedToStreams();
 			dumpVal("Nbr of children", streams.length, indent+1);
 
 			for(Stream s : streams) {
@@ -95,7 +95,7 @@ public final class VSDDumper {
 			}
 		}
 		if(stream instanceof ChunkStream) {
-		    Chunk chunks[] = ((ChunkStream)stream).getChunks();
+            Chunk[] chunks = ((ChunkStream) stream).getChunks();
 			dumpVal("Nbr of chunks", chunks.length, indent+1);
 
 			for(Chunk chunk : chunks) {
@@ -109,7 +109,7 @@ public final class VSDDumper {
         dumpVal("Length is", chunk._getContents().length, indent);
         dumpVal("OD Size is", chunk.getOnDiskSize(), indent);
         dumpVal("T / S is", chunk.getTrailer() + " / " + chunk.getSeparator(), indent);
-        Command commands[] = chunk.getCommands();
+        Command[] commands = chunk.getCommands();
         dumpVal("Nbr of commands", commands.length, indent);
         for(Command command : commands) {
             dumpVal(command.getDefinition().getName(), ""+command.getValue(), indent+1);

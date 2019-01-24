@@ -17,6 +17,8 @@
 
 package org.apache.poi.sl.draw;
 
+import static org.apache.poi.sl.draw.DrawPaint.fillPaintWorkaround;
+
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -67,6 +69,10 @@ public class DrawSimpleShape extends DrawShape {
 
     @Override
     public void draw(Graphics2D graphics) {
+        if (getAnchor(graphics, getShape()) == null) {
+            return;
+        }
+
         DrawPaint drawPaint = DrawFactory.getInstance(graphics).getPaint(getShape());
         Paint fill = drawPaint.getPaint(graphics, getShape().getFillStyle().getPaint());
         Paint line = drawPaint.getPaint(graphics, getShape().getStrokeStyle().getPaint());
@@ -87,7 +93,7 @@ public class DrawSimpleShape extends DrawShape {
                         graphics.setPaint(fillMod);
                         java.awt.Shape s = o.getOutline();
                         graphics.setRenderingHint(Drawable.GRADIENT_SHAPE, s);
-                        graphics.fill(s);
+                        fillPaintWorkaround(graphics, s);
                     }
                 }
             }
@@ -327,7 +333,7 @@ public class DrawSimpleShape extends DrawShape {
               graphics.setPaint(shadowColor);
 
               if(fill != null && p.isFilled()){
-                  graphics.fill(s);
+                  fillPaintWorkaround(graphics, s);
               } else if (line != null && p.isStroked()) {
                   graphics.draw(s);
               }
@@ -405,16 +411,25 @@ public class DrawSimpleShape extends DrawShape {
         }
 
         Rectangle2D anchor = getAnchor(graphics, sh);
+        if(anchor == null) {
+            return lst;
+        }
         for (Path p : geom) {
 
-            double w = p.getW(), h = p.getH(), scaleX = Units.toPoints(1), scaleY = scaleX;
+            double w = p.getW(), h = p.getH(), scaleX, scaleY;
             if (w == -1) {
                 w = Units.toEMU(anchor.getWidth());
+                scaleX = Units.toPoints(1);
+            } else if (anchor.getWidth() == 0) {
+                scaleX = 1;
             } else {
                 scaleX = anchor.getWidth() / w;
             }
             if (h == -1) {
                 h = Units.toEMU(anchor.getHeight());
+                scaleY = Units.toPoints(1);
+            } else if (anchor.getHeight() == 0) {
+                scaleY = 1;
             } else {
                 scaleY = anchor.getHeight() / h;
             }

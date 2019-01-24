@@ -23,13 +23,19 @@ import java.awt.Graphics2D;
 import java.awt.LinearGradientPaint;
 import java.awt.Paint;
 import java.awt.RadialGradientPaint;
+import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.function.BiFunction;
 
+import org.apache.poi.sl.usermodel.AbstractColorStyle;
 import org.apache.poi.sl.usermodel.ColorStyle;
 import org.apache.poi.sl.usermodel.PaintStyle;
 import org.apache.poi.sl.usermodel.PaintStyle.GradientPaint;
@@ -66,7 +72,7 @@ public class DrawPaint {
             if (color == null) {
                 throw new NullPointerException("Color needs to be specified");
             }
-            this.solidColor = new ColorStyle(){
+            this.solidColor = new AbstractColorStyle(){
                     @Override
                     public Color getColor() {
                         return new Color(color.getRed(), color.getGreen(), color.getBlue());
@@ -89,6 +95,8 @@ public class DrawPaint {
                     public int getShade() { return -1; }
                     @Override
                     public int getTint() { return -1; }
+
+
                 };
         }
 
@@ -102,6 +110,22 @@ public class DrawPaint {
         @Override
         public ColorStyle getSolidColor() {
             return solidColor;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof SolidPaint)) {
+                return false;
+            }
+            return Objects.equals(getSolidColor(), ((SolidPaint) o).getSolidColor());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(solidColor);
         }
     }
 
@@ -119,7 +143,7 @@ public class DrawPaint {
 
     public Paint getPaint(Graphics2D graphics, PaintStyle paint, PaintModifier modifier) {
         if (modifier == PaintModifier.NONE) {
-            return null;
+            return TRANSPARENT;
         }
         if (paint instanceof SolidPaint) {
             return getSolidPaint((SolidPaint)paint, graphics, modifier);
@@ -128,12 +152,13 @@ public class DrawPaint {
         } else if (paint instanceof TexturePaint) {
             return getTexturePaint((TexturePaint)paint, graphics);
         }
-        return null;
+        return TRANSPARENT;
     }
 
+    @SuppressWarnings({"WeakerAccess", "unused"})
     protected Paint getSolidPaint(SolidPaint fill, Graphics2D graphics, final PaintModifier modifier) {
         final ColorStyle orig = fill.getSolidColor();
-        ColorStyle cs = new ColorStyle() {
+        ColorStyle cs = new AbstractColorStyle() {
             @Override
             public Color getColor() {
                 return orig.getColor();
@@ -176,34 +201,24 @@ public class DrawPaint {
 
             @Override
             public int getShade() {
-                int shade = orig.getShade();
-                switch (modifier) {
-                    case DARKEN:
-                        return Math.min(100000, Math.max(0,shade)+40000);
-                    case DARKEN_LESS:
-                        return Math.min(100000, Math.max(0,shade)+20000);
-                    default:
-                        return shade;
-                }
+                return scale(orig.getShade(), PaintModifier.DARKEN_LESS, PaintModifier.DARKEN);
             }
 
             @Override
             public int getTint() {
-                int tint = orig.getTint();
-                switch (modifier) {
-                    case LIGHTEN:
-                        return Math.min(100000, Math.max(0,tint)+40000);
-                    case LIGHTEN_LESS:
-                        return Math.min(100000, Math.max(0,tint)+20000);
-                    default:
-                        return tint;
-                }
+                return scale(orig.getTint(), PaintModifier.LIGHTEN_LESS, PaintModifier.LIGHTEN);
+            }
+
+            private int scale(int value, PaintModifier lessModifier, PaintModifier moreModifier) {
+                int delta = (modifier == lessModifier ? 20000 : (modifier == moreModifier ? 40000 : 0));
+                return Math.min(100000, Math.max(0,value)+delta);
             }
         };
 
         return applyColorTransform(cs);
     }
 
+    @SuppressWarnings("WeakerAccess")
     protected Paint getGradientPaint(GradientPaint fill, Graphics2D graphics) {
         switch (fill.getGradientType()) {
         case linear:
@@ -217,10 +232,11 @@ public class DrawPaint {
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     protected Paint getTexturePaint(TexturePaint fill, Graphics2D graphics) {
         InputStream is = fill.getImageData();
         if (is == null) {
-            return null;
+            return TRANSPARENT;
         }
         assert(graphics != null);
 
@@ -234,7 +250,7 @@ public class DrawPaint {
             }
         } catch (IOException e) {
             LOG.log(POILogger.ERROR, "Can't load image data - using transparent color", e);
-            return null;
+            return TRANSPARENT;
         }
 
         int alpha = fill.getAlpha();
@@ -254,7 +270,7 @@ public class DrawPaint {
 
         if(image == null) {
             LOG.log(POILogger.ERROR, "Can't load image data");
-            return null;
+            return TRANSPARENT;
         }
 
         return new java.awt.TexturePaint(image, textAnchor);
@@ -277,7 +293,7 @@ public class DrawPaint {
         Color result = color.getColor();
 
         double alpha = getAlpha(result, color);
-        double hsl[] = RGB2HSL(result); // values are in the range [0..100] (usually ...)
+        double[] hsl = RGB2HSL(result); // values are in the range [0..100] (usually ...)
         applyHslModOff(hsl, 0, color.getHueMod(), color.getHueOff());
         applyHslModOff(hsl, 1, color.getSatMod(), color.getSatOff());
         applyHslModOff(hsl, 2, color.getLumMod(), color.getLumOff());
@@ -320,10 +336,8 @@ public class DrawPaint {
      * @param hslPart the hsl part to modify [0..2]
      * @param mod the modulation adjustment
      * @param off the offset adjustment
-     * @return the modified hsl value
-     *
      */
-    private static void applyHslModOff(double hsl[], int hslPart, int mod, int off) {
+    private static void applyHslModOff(double[] hsl, int hslPart, int mod, int off) {
         if (mod == -1) {
             mod = 100000;
         }
@@ -342,7 +356,7 @@ public class DrawPaint {
      *
      * For a shade, the equation is luminance * %tint.
      */
-    private static void applyShade(double hsl[], ColorStyle fc) {
+    private static void applyShade(double[] hsl, ColorStyle fc) {
         int shade = fc.getShade();
         if (shade == -1) {
             return;
@@ -359,7 +373,7 @@ public class DrawPaint {
      * For a tint, the equation is luminance * %tint + (1-%tint).
      * (Note that 1-%tint is equal to the lumOff value in DrawingML.)
      */
-    private static void applyTint(double hsl[], ColorStyle fc) {
+    private static void applyTint(double[] hsl, ColorStyle fc) {
         int tint = fc.getTint();
         if (tint == -1) {
             return;
@@ -370,6 +384,7 @@ public class DrawPaint {
         hsl[2] = hsl[2]*(1.-tintPct) + (100.-100.*(1.-tintPct));
     }
 
+    @SuppressWarnings("WeakerAccess")
     protected Paint createLinearGradientPaint(GradientPaint fill, Graphics2D graphics) {
         // TODO: we need to find the two points for gradient - the problem is, which point at the outline
         // do you take? My solution would be to apply the gradient rotation to the shape in reverse
@@ -381,82 +396,63 @@ public class DrawPaint {
         }
 
         Rectangle2D anchor = DrawShape.getAnchor(graphics, shape);
-        final double h = anchor.getHeight(), w = anchor.getWidth(), x = anchor.getX(), y = anchor.getY();
 
         AffineTransform at = AffineTransform.getRotateInstance(Math.toRadians(angle), anchor.getCenterX(), anchor.getCenterY());
 
-        double diagonal = Math.sqrt(h * h + w * w);
-        Point2D p1 = new Point2D.Double(x + w / 2 - diagonal / 2, y + h / 2);
-        p1 = at.transform(p1, null);
-
-        Point2D p2 = new Point2D.Double(x + w, y + h / 2);
-        p2 = at.transform(p2, null);
+        double diagonal = Math.sqrt(Math.pow(anchor.getWidth(),2) + Math.pow(anchor.getHeight(),2));
+        final Point2D p1 = at.transform(new Point2D.Double(anchor.getCenterX() - diagonal / 2, anchor.getCenterY()), null);
+        final Point2D p2 = at.transform(new Point2D.Double(anchor.getMaxX(), anchor.getCenterY()), null);
 
 //        snapToAnchor(p1, anchor);
 //        snapToAnchor(p2, anchor);
 
-        if (p1.equals(p2)) {
-            // gradient paint on the same point throws an exception ... and doesn't make sense
-            return null;
-        }
-
-        float[] fractions = fill.getGradientFractions();
-        Color[] colors = new Color[fractions.length];
-
-        int i = 0;
-        for (ColorStyle fc : fill.getGradientColors()) {
-            // if fc is null, use transparent color to get color of background
-            colors[i++] = (fc == null) ? TRANSPARENT : applyColorTransform(fc);
-        }
-
-        return new LinearGradientPaint(p1, p2, fractions, colors);
+        // gradient paint on the same point throws an exception ... and doesn't make sense
+        return (p1.equals(p2)) ? null : safeFractions((f,c)->new LinearGradientPaint(p1,p2,f,c), fill);
     }
 
+
+    @SuppressWarnings("WeakerAccess")
     protected Paint createRadialGradientPaint(GradientPaint fill, Graphics2D graphics) {
         Rectangle2D anchor = DrawShape.getAnchor(graphics, shape);
 
-        Point2D pCenter = new Point2D.Double(anchor.getX() + anchor.getWidth()/2,
-                anchor.getY() + anchor.getHeight()/2);
+        final Point2D pCenter = new Point2D.Double(anchor.getCenterX(), anchor.getCenterY());
 
-        float radius = (float)Math.max(anchor.getWidth(), anchor.getHeight());
+        final float radius = (float)Math.max(anchor.getWidth(), anchor.getHeight());
 
-        float[] fractions = fill.getGradientFractions();
-        Color[] colors = new Color[fractions.length];
-
-        int i=0;
-        for (ColorStyle fc : fill.getGradientColors()) {
-            colors[i++] = applyColorTransform(fc);
-        }
-
-        return new RadialGradientPaint(pCenter, radius, fractions, colors);
+        return safeFractions((f,c)->new RadialGradientPaint(pCenter,radius,f,c), fill);
     }
 
+    @SuppressWarnings({"WeakerAccess", "unused"})
     protected Paint createPathGradientPaint(GradientPaint fill, Graphics2D graphics) {
         // currently we ignore an eventually center setting
 
-        float[] fractions = fill.getGradientFractions();
-        Color[] colors = new Color[fractions.length];
-
-        int i=0;
-        for (ColorStyle fc : fill.getGradientColors()) {
-            colors[i++] = applyColorTransform(fc);
-        }
-
-        return new PathGradientPaint(colors, fractions);
+        return safeFractions(PathGradientPaint::new, fill);
     }
 
-    protected void snapToAnchor(Point2D p, Rectangle2D anchor) {
-        if (p.getX() < anchor.getX()) {
-            p.setLocation(anchor.getX(), p.getY());
-        } else if (p.getX() > (anchor.getX() + anchor.getWidth())) {
-            p.setLocation(anchor.getX() + anchor.getWidth(), p.getY());
+    private Paint safeFractions(BiFunction<float[],Color[],Paint> init, GradientPaint fill) {
+        float[] fractions = fill.getGradientFractions();
+        final ColorStyle[] styles = fill.getGradientColors();
+
+        // need to remap the fractions, because Java doesn't like repeating fraction values
+        Map<Float,Color> m = new TreeMap<>();
+        for (int i = 0; i<fractions.length; i++) {
+            // if fc is null, use transparent color to get color of background
+            m.put(fractions[i], (styles[i] == null ? TRANSPARENT : applyColorTransform(styles[i])));
         }
 
-        if (p.getY() < anchor.getY()) {
-            p.setLocation(p.getX(), anchor.getY());
-        } else if (p.getY() > (anchor.getY() + anchor.getHeight())) {
-            p.setLocation(p.getX(), anchor.getY() + anchor.getHeight());
+        final Color[] colors = new Color[m.size()];
+        if (fractions.length != m.size()) {
+            fractions = new float[m.size()];
         }
+
+        int i=0;
+        for (Map.Entry<Float,Color> me : m.entrySet()) {
+            fractions[i] = me.getKey();
+            colors[i] = me.getValue();
+            i++;
+        }
+
+        return init.apply(fractions, colors);
     }
 
     /**
@@ -568,7 +564,7 @@ public class DrawPaint {
 
         //  Calculate the Saturation
 
-        double s = 0;
+        final double s;
 
         if (max == min) {
             s = 0;
@@ -608,6 +604,21 @@ public class DrawPaint {
             return (float)(linRGB / 100000d * 12.92d);
         } else {
             return (float)(1.055d * Math.pow(linRGB / 100000d, 1.0d/2.4d) - 0.055d);
+        }
+    }
+
+
+    static void fillPaintWorkaround(Graphics2D graphics, Shape shape) {
+        // the ibm jdk has a rendering/JIT bug, which throws an AIOOBE in
+        // TexturePaintContext$Int.setRaster(TexturePaintContext.java:476)
+        // this usually doesn't happen while debugging, because JIT doesn't jump in then.
+        try {
+            graphics.fill(shape);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            LOG.log(POILogger.WARN, "IBM JDK failed with TexturePaintContext AIOOBE - try adding the following to the VM parameter:\n" +
+                "-Xjit:exclude={sun/java2d/pipe/AlphaPaintPipe.renderPathTile(Ljava/lang/Object;[BIIIIII)V} and " +
+                "search for 'JIT Problem Determination for IBM SDK using -Xjit' (http://www-01.ibm.com/support/docview.wss?uid=swg21294023) " +
+                "for how to add/determine further excludes", e);
         }
     }
 }

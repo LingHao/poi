@@ -135,7 +135,7 @@ public final class TextSpecInfoAtom extends RecordAtom {
         assert(size > 0);
         int covered = 0;
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        TextSpecInfoRun runs[] = getTextSpecInfoRuns();
+        TextSpecInfoRun[] runs = getTextSpecInfoRuns();
         assert(runs.length > 0);
         for (int i=0; i<runs.length && covered < size; i++) {
             TextSpecInfoRun run = runs[i];
@@ -171,7 +171,7 @@ public final class TextSpecInfoAtom extends RecordAtom {
     public TextSpecInfoRun[] getTextSpecInfoRuns(){
         LittleEndianByteArrayInputStream bis = new LittleEndianByteArrayInputStream(_data); // NOSONAR
         List<TextSpecInfoRun> lst = new ArrayList<>();
-        while (bis.available() > 0) {
+        while (bis.getReadIndex() < _data.length) {
             lst.add(new TextSpecInfoRun(bis));
         }
         return lst.toArray(new TextSpecInfoRun[lst.size()]);

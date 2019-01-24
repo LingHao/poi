@@ -25,9 +25,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.poi.openxml4j.opc.PackagePart;
-import org.apache.poi.openxml4j.opc.PackageRelationship;
-import org.apache.poi.openxml4j.opc.TargetMode;
+import org.apache.poi.ooxml.POIXMLDocumentPart.RelationPart;
 import org.apache.poi.sl.draw.DrawPictureShape;
 import org.apache.poi.sl.usermodel.GroupShape;
 import org.apache.poi.sl.usermodel.PictureData;
@@ -65,7 +63,7 @@ implements XSLFShapeContainer, GroupShape<XSLFShape,XSLFTextParagraph> {
 
     protected XSLFGroupShape(CTGroupShape shape, XSLFSheet sheet){
         super(shape,sheet);
-        _shapes = XSLFSheet.buildShapes(shape, sheet);
+        _shapes = XSLFSheet.buildShapes(shape, this);
         _grpSpPr = shape.getGrpSpPr();
     }
 
@@ -74,7 +72,7 @@ implements XSLFShapeContainer, GroupShape<XSLFShape,XSLFTextParagraph> {
         return _grpSpPr;
     }
     
-    protected CTGroupTransform2D getSafeXfrm() {
+    private CTGroupTransform2D getSafeXfrm() {
         CTGroupTransform2D xfrm = getXfrm();
         return (xfrm == null ? getGrpSpPr().addNewXfrm() : xfrm);
     }
@@ -174,9 +172,12 @@ implements XSLFShapeContainer, GroupShape<XSLFShape,XSLFTextParagraph> {
     public boolean removeShape(XSLFShape xShape) {
         XmlObject obj = xShape.getXmlObject();
         CTGroupShape grpSp = (CTGroupShape)getXmlObject();
+        getSheet().deregisterShapeId(xShape.getShapeId());
         if(obj instanceof CTShape){
             grpSp.getSpList().remove(obj);
         } else if (obj instanceof CTGroupShape){
+            XSLFGroupShape gs = (XSLFGroupShape)xShape;
+            new ArrayList<>(gs.getShapes()).forEach(gs::removeShape);
             grpSp.getGrpSpList().remove(obj);
         } else if (obj instanceof CTConnector){
             grpSp.getCxnSpList().remove(obj);
@@ -203,7 +204,7 @@ implements XSLFShapeContainer, GroupShape<XSLFShape,XSLFTextParagraph> {
         CTGroupShapeNonVisual nvSpPr = ct.addNewNvGrpSpPr();
         CTNonVisualDrawingProps cnv = nvSpPr.addNewCNvPr();
         cnv.setName("Group " + shapeId);
-        cnv.setId(shapeId + 1);
+        cnv.setId(shapeId);
 
         nvSpPr.addNewCNvGrpSpPr();
         nvSpPr.addNewNvPr();
@@ -264,13 +265,9 @@ implements XSLFShapeContainer, GroupShape<XSLFShape,XSLFTextParagraph> {
         if (!(pictureData instanceof XSLFPictureData)) {
             throw new IllegalArgumentException("pictureData needs to be of type XSLFPictureData");
         }
-        XSLFPictureData xPictureData = (XSLFPictureData)pictureData;
-        PackagePart pic = xPictureData.getPackagePart();
+        RelationPart rp = getSheet().addRelation(null, XSLFRelation.IMAGES, (XSLFPictureData)pictureData);
 
-        PackageRelationship rel = getSheet().getPackagePart().addRelationship(
-                pic.getPartName(), TargetMode.INTERNAL, XSLFRelation.IMAGES.getRelation());
-
-        XSLFPictureShape sh = getDrawing().createPicture(rel.getId());
+        XSLFPictureShape sh = getDrawing().createPicture(rp.getRelationship().getId());
         new DrawPictureShape(sh).resize();
         _shapes.add(sh);
         sh.setParent(this);
@@ -282,13 +279,10 @@ implements XSLFShapeContainer, GroupShape<XSLFShape,XSLFTextParagraph> {
         if (!(pictureData instanceof XSLFPictureData)) {
             throw new IllegalArgumentException("pictureData needs to be of type XSLFPictureData");
         }
-        XSLFPictureData xPictureData = (XSLFPictureData)pictureData;
-        PackagePart pic = xPictureData.getPackagePart();
 
-        PackageRelationship rel = getSheet().getPackagePart().addRelationship(
-                pic.getPartName(), TargetMode.INTERNAL, XSLFRelation.IMAGES.getRelation());
-        
-        XSLFObjectShape sh = getDrawing().createOleShape(rel.getId());
+        RelationPart rp = getSheet().addRelation(null, XSLFRelation.IMAGES, (XSLFPictureData)pictureData);
+
+        XSLFObjectShape sh = getDrawing().createOleShape(rp.getRelationship().getId());
         CTOleObject oleObj = sh.getCTOleObject();
         Dimension dim = pictureData.getImageDimension();
         oleObj.setImgW(Units.toEMU(dim.getWidth()));

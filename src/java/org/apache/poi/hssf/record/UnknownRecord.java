@@ -80,13 +80,10 @@ public final class UnknownRecord extends StandardRecord {
     public UnknownRecord(RecordInputStream in) {
         _sid = in.getSid();
         _rawData = in.readRemainder();
-//        if (false && getBiffName(_sid) == null) {
-//            // unknown sids in the range 0x0004-0x0013 are probably 'sub-records' of ObjectRecord
-//            // those sids are in a different number space.
-//            // TODO - put unknown OBJ sub-records in a different class
-//            System.out.println("Unknown record 0x" + 
-//                               Integer.toHexString(_sid).toUpperCase(Locale.ROOT));
-//        }
+
+        // TODO - put unknown OBJ sub-records in a different class
+        // unknown sids in the range 0x0004-0x0013 are probably 'sub-records' of ObjectRecord
+        // those sids are in a different number space.
     }
 
     /**
@@ -129,6 +126,8 @@ public final class UnknownRecord extends StandardRecord {
 
     /**
      * These BIFF record types are known but still uninterpreted by POI
+     *
+     * @param sid The identifier for an unknown record type
      *
      * @return the documented name of this BIFF record type, <code>null</code> if unknown to POI
      */

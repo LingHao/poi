@@ -32,12 +32,15 @@ import org.apache.poi.util.IOUtils;
  */
 public abstract class HPBFPart {
 	private byte[] data;
+	private final String[] path;
+
 	/**
 	 * @param path  the path to the part, eg Contents or Quill, QuillSub, CONTENTS
 	 */
 	public HPBFPart(DirectoryNode baseDir, String[] path) throws IOException {
+		this.path = path;
 
-		DirectoryNode dir = getDir(path, baseDir);
+		DirectoryNode dir = getDir(baseDir, path);
 		String name = path[path.length-1];
 
 		if (!dir.hasEntry(name)) {
@@ -45,11 +48,12 @@ public abstract class HPBFPart {
 		}
 
 		// Grab the data from the part stream
-		InputStream is = dir.createDocumentInputStream(name);
-		data = IOUtils.toByteArray(is);
-		is.close();
+		try (InputStream is = dir.createDocumentInputStream(name)) {
+			data = IOUtils.toByteArray(is);
+		}
 	}
-	private DirectoryNode getDir(String[] path, DirectoryNode baseDir) {
+
+	private static DirectoryNode getDir(DirectoryNode baseDir, String[] path) {
 		DirectoryNode dir = baseDir;
 		for(int i=0; i<path.length-1; i++) {
 			try {
@@ -94,14 +98,18 @@ public abstract class HPBFPart {
 	 * Returns the raw data that makes up
 	 *  this document part.
 	 */
-	public final byte[] getData() { return data; }
+	public final byte[] getData() {
+		return data;
+	}
 	
-	protected final void setData(byte data[]) {
+	protected final void setData(byte[] data) {
 	    this.data = data.clone();
 	}
 
 	/**
 	 * Returns
 	 */
-	public final String[] getPath() {return null;}
+	public final String[] getPath() {
+		return path;
+	}
 }

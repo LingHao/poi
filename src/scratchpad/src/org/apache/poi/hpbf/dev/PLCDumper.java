@@ -24,7 +24,7 @@ import java.io.InputStream;
 import org.apache.poi.hpbf.HPBFDocument;
 import org.apache.poi.hpbf.model.QuillContents;
 import org.apache.poi.hpbf.model.qcbits.QCBit;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.util.HexDump;
 
 /**
@@ -40,11 +40,11 @@ public final class PLCDumper {
 		doc = hpbfDoc;
 		qc = doc.getQuillContents();
 	}
-	public PLCDumper(NPOIFSFileSystem fs) throws IOException {
+	public PLCDumper(POIFSFileSystem fs) throws IOException {
 		this(new HPBFDocument(fs));
 	}
 	public PLCDumper(InputStream inp) throws IOException {
-		this(new NPOIFSFileSystem(inp));
+		this(new POIFSFileSystem(inp));
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -73,7 +73,7 @@ public final class PLCDumper {
 	}
 
 	private void dumpBit(QCBit bit, int index) {
-		System.out.println("");
+		System.out.println();
 		System.out.println("Dumping " + bit.getBitType() + " bit at " + index);
 		System.out.println("  Is a " + bit.getThingType() + ", number is " + bit.getOptA());
 		System.out.println("  Starts at " + bit.getDataOffset() + " (0x" + Integer.toHexString(bit.getDataOffset()) + ")");

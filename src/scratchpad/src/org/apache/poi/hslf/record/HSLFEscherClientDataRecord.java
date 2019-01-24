@@ -20,7 +20,6 @@ package org.apache.poi.hslf.record;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.poi.ddf.EscherClientDataRecord;
@@ -49,12 +48,7 @@ public class HSLFEscherClientDataRecord extends EscherClientDataRecord {
     }
     
     public void removeChild(Class<? extends Record> childClass) {
-        Iterator<Record> iter = _childRecords.iterator();
-        while (iter.hasNext()) {
-            if (childClass.isInstance(iter.next())) {
-                iter.remove();
-            }
-        }
+        _childRecords.removeIf(childClass::isInstance);
     }
     
     public void addChild(Record childRecord) {
@@ -64,7 +58,7 @@ public class HSLFEscherClientDataRecord extends EscherClientDataRecord {
     @Override
     public int fillFields(byte[] data, int offset, EscherRecordFactory recordFactory) {
         int bytesRemaining = readHeader( data, offset );
-        byte remainingData[] = IOUtils.safelyAllocate(bytesRemaining, MAX_RECORD_LENGTH);
+        byte[] remainingData = IOUtils.safelyAllocate(bytesRemaining, MAX_RECORD_LENGTH);
         System.arraycopy(data, offset+8, remainingData, 0, bytesRemaining);
         setRemainingData(remainingData);
         return bytesRemaining + 8;
@@ -76,8 +70,8 @@ public class HSLFEscherClientDataRecord extends EscherClientDataRecord {
         
         LittleEndian.putShort(data, offset, getOptions());
         LittleEndian.putShort(data, offset+2, getRecordId());
-        
-        byte childBytes[] = getRemainingData();
+
+        byte[] childBytes = getRemainingData();
         
         LittleEndian.putInt(data, offset+4, childBytes.length);
         System.arraycopy(childBytes, 0, data, offset+8, childBytes.length);
@@ -109,8 +103,10 @@ public class HSLFEscherClientDataRecord extends EscherClientDataRecord {
         _childRecords.clear();
         int offset = 0;
         while (offset < remainingData.length) {
-            Record r = Record.buildRecordAtOffset(remainingData, offset);
-            _childRecords.add(r);
+            final Record r = Record.buildRecordAtOffset(remainingData, offset);
+            if (r != null) {
+                _childRecords.add(r);
+            }
             long rlen = LittleEndian.getUInt(remainingData,offset+4);
             offset += 8 + rlen;
         }

@@ -53,8 +53,8 @@ public final class TestBasic {
     private static final POIDataSamples samples = POIDataSamples.getHPSFInstance();
 
     private static final String[] POI_FILES = {
-        "\005SummaryInformation",
-        "\005DocumentSummaryInformation",
+        SummaryInformation.DEFAULT_STREAM_NAME,
+        DocumentSummaryInformation.DEFAULT_STREAM_NAME,
         "WordDocument",
         "\001CompObj",
         "1Table"
@@ -123,9 +123,7 @@ public final class TestBasic {
             Object o;
             try {
                 o = PropertySetFactory.create(in);
-            } catch (NoPropertySetStreamException ex) {
-                o = ex;
-            } catch (MarkUnsupportedException ex) {
+            } catch (NoPropertySetStreamException | MarkUnsupportedException ex) {
                 o = ex;
             }
             in.close();

@@ -23,27 +23,27 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
-import org.apache.poi.poifs.filesystem.DirectoryEntry;
 import org.apache.poi.sl.usermodel.ObjectData;
 import org.apache.poi.util.Beta;
 
 /**
  * An XSLFOleData instance holds the ole binary stream/object  
  */
+@SuppressWarnings("unused")
 @Beta
 public final class XSLFObjectData extends POIXMLDocumentPart implements ObjectData {
 
     /**
-     * Create a new XSLFOleData node
+     * Create a new XSLFObjectData node
      */
-    protected XSLFObjectData() {
+    /* package */ XSLFObjectData() {
         super();
     }
 
     /**
-     * Construct XSLFOleData from a package part
+     * Construct XSLFObjectData from a package part
      *
      * @param part the package part holding the ole data
      * 
@@ -59,14 +59,14 @@ public final class XSLFObjectData extends POIXMLDocumentPart implements ObjectDa
     }
 
     @Override
-    public OutputStream getOutputStream() throws IOException {
+    public OutputStream getOutputStream() {
         final PackagePart pp = getPackagePart();
         pp.clear();
         return pp.getOutputStream();
     }
     
     /**
-     * *PictureData objects store the actual content in the part directly without keeping a
+     * XSLFObjectData objects store the actual content in the part directly without keeping a
      * copy like all others therefore we need to handle them differently.
      */
     @Override

@@ -43,7 +43,7 @@ public final class TestLittleEndian {
         testdata[0] = 0x01;
         testdata[1] = (byte) 0xFF;
         testdata[2] = 0x02;
-        short expected[] = new short[2];
+        short[] expected = new short[2];
 
         expected[0] = ( short ) 0xFF01;
         expected[1] = 0x02FF;
@@ -164,7 +164,7 @@ public final class TestLittleEndian {
         expected[1] = (byte) 0xFF;
         expected[2] = 0x02;
         byte[] received   = new byte[ LittleEndianConsts.SHORT_SIZE + 1 ];
-        short  testdata[] = new short[2];
+        short[] testdata = new short[2];
 
         testdata[0] = ( short ) 0xFF01;
         testdata[1] = 0x02FF;
@@ -258,10 +258,14 @@ public final class TestLittleEndian {
         InputStream stream         = new ByteArrayInputStream(_good_array);
         int         count          = 0;
 
-        while (stream.available() > 0) {
-            short value = LittleEndian.readShort(stream);
-            assertEquals(value, expected_value);
-            count++;
+        while (true) {
+            try {
+                short value = LittleEndian.readShort(stream);
+                assertEquals(value, expected_value);
+                count++;
+            } catch (BufferUnderrunException e) {
+                break;
+            }
         }
         assertEquals(count,
                      _good_array.length / LittleEndianConsts.SHORT_SIZE);
@@ -283,10 +287,14 @@ public final class TestLittleEndian {
         InputStream stream         = new ByteArrayInputStream(_good_array);
         int         count          = 0;
 
-        while (stream.available() > 0) {
-            int value = LittleEndian.readInt(stream);
-            assertEquals(value, expected_value);
-            count++;
+        while (true) {
+            try {
+                int value = LittleEndian.readInt(stream);
+                assertEquals(value, expected_value);
+                count++;
+            } catch (BufferUnderrunException e) {
+                break;
+            }
         }
         assertEquals(count, _good_array.length / LittleEndianConsts.INT_SIZE);
         stream = new ByteArrayInputStream(_bad_array);
@@ -308,10 +316,14 @@ public final class TestLittleEndian {
         InputStream stream         = new ByteArrayInputStream(_good_array);
         int         count          = 0;
 
-        while (stream.available() > 0) {
-            long value = LittleEndian.readLong(stream);
-            assertEquals(value, expected_value);
-            count++;
+        while (true) {
+            try {
+                long value = LittleEndian.readLong(stream);
+                assertEquals(value, expected_value);
+                count++;
+            } catch (BufferUnderrunException e) {
+                break;
+            }
         }
         assertEquals(count,
                      _good_array.length / LittleEndianConsts.LONG_SIZE);
@@ -324,21 +336,17 @@ public final class TestLittleEndian {
         }
     }
 
-//    public void testReadFromStream() throws IOException {
-//        int actual;
-//        actual = LittleEndian.readUShort(new ByteArrayInputStream(new byte[] { 5, -128, }));
-//        assertEquals(32773, actual);
-//        
-//        actual = LittleEndian.readUShort(new ByteArrayInputStream(new byte[] { 1, 2, 3, 4, }));
-//        assertEquals(513, actual);
-//
-//        try {
-//            LittleEndian.readInt(new ByteArrayInputStream(new byte[] { 1, 2, 3, }));
-//            fail("Should have caught BufferUnderrunException");
-//        } catch (BufferUnderrunException ignored) {
-//            // as expected
-//        }
-//    }
+    @Test(expected = BufferUnderrunException.class)
+    public void testReadFromStream() throws IOException {
+        int actual;
+        actual = LittleEndian.readUShort(new ByteArrayInputStream(new byte[] { 5, -128, }));
+        assertEquals(32773, actual);
+
+        actual = LittleEndian.readUShort(new ByteArrayInputStream(new byte[] { 1, 2, 3, 4, }));
+        assertEquals(513, actual);
+
+        LittleEndian.readInt(new ByteArrayInputStream(new byte[] { 1, 2, 3, }));
+    }
 
     @Test
     public void testUnsignedByteToInt() {

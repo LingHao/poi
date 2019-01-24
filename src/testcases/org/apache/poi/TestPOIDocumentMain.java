@@ -25,11 +25,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import org.apache.poi.hpsf.DocumentSummaryInformation;
 import org.apache.poi.hpsf.HPSFPropertiesOnlyDocument;
+import org.apache.poi.hpsf.SummaryInformation;
 import org.apache.poi.hssf.HSSFTestDataSamples;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
-import org.apache.poi.poifs.filesystem.OPOIFSFileSystem;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -76,23 +77,23 @@ public final class TestPOIDocumentMain {
         assertNotNull(doc2.getSummaryInformation());
 
         assertEquals("Avik Sengupta", doc2.getSummaryInformation().getAuthor());
-        assertEquals(null, doc2.getSummaryInformation().getKeywords());
+        assertNull(doc2.getSummaryInformation().getKeywords());
         assertEquals(0, doc2.getDocumentSummaryInformation().getByteCount());
     }
 
     @Test
     public void writeProperties() throws IOException {
         // Just check we can write them back out into a filesystem
-        NPOIFSFileSystem outFS = new NPOIFSFileSystem();
+        POIFSFileSystem outFS = new POIFSFileSystem();
         doc.readProperties();
         doc.writeProperties(outFS);
 
         // Should now hold them
         assertNotNull(
-                outFS.createDocumentInputStream("\005SummaryInformation")
+                outFS.createDocumentInputStream(SummaryInformation.DEFAULT_STREAM_NAME)
         );
         assertNotNull(
-                outFS.createDocumentInputStream("\005DocumentSummaryInformation")
+                outFS.createDocumentInputStream(DocumentSummaryInformation.DEFAULT_STREAM_NAME)
         );
     }
 
@@ -101,14 +102,14 @@ public final class TestPOIDocumentMain {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         // Write them out
-        NPOIFSFileSystem outFS = new NPOIFSFileSystem();
+        POIFSFileSystem outFS = new POIFSFileSystem();
         doc.readProperties();
         doc.writeProperties(outFS);
         outFS.writeFilesystem(baos);
 
         // Create a new version
         ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-        OPOIFSFileSystem inFS = new OPOIFSFileSystem(bais);
+        POIFSFileSystem inFS = new POIFSFileSystem(bais);
 
         // Check they're still there
         POIDocument doc3 = new HPSFPropertiesOnlyDocument(inFS);

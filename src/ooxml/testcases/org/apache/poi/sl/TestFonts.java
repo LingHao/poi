@@ -38,7 +38,6 @@ import java.util.Map;
 
 import org.apache.poi.POIDataSamples;
 import org.apache.poi.common.usermodel.fonts.FontGroup;
-import org.apache.poi.hslf.usermodel.HSLFSlideShow;
 import org.apache.poi.sl.draw.DrawFactory;
 import org.apache.poi.sl.draw.Drawable;
 import org.apache.poi.sl.usermodel.Slide;
@@ -69,17 +68,17 @@ public class TestFonts {
         "\u304C\u597D\u304D\u3067\u3001\u5C0F\u3055\u3044\u9803\u3001\u53E4\u4EE3\u751F\u7269\u306E\u56F3" +
         "\u9451\u3092\u4E00\u7DD2\u306B\u898B\u3066\u305F\u306E\u601D\u3044\u51FA\u3059\u301C\u3068\u3044";
 
-    private static final String INIT_FONTS[] = { "mona.ttf" };
+    private static final String[] INIT_FONTS = {"mona.ttf"};
 
     // currently linux and mac return quite different values
     private static final int[] expected_sizes = {
             304, // windows 10, 1080p, MS Office 2016, system text scaling 100% instead of default 125%
-            306, // Windows 10, 15.6" 3840x2160
+            306, 308,// Windows 10, 15.6" 3840x2160
             311, 312, 313, 318,
             348, // Windows 10, 15.6" 3840x2160
             362, // Windows 10, 13.3" 1080p high-dpi
             372, // Ubuntu Xenial, 15", 1680x1050
-            377, 398, 399, // Mac
+            377, 391, 398, 399, // Mac
             406  // Ubuntu Xenial, 15", 1680x1050
     };
 
@@ -93,9 +92,9 @@ public class TestFonts {
     }
 
     @Test
-    public void resizeToFitTextHSLF() throws IOException {
+    public void resizeToFitTextHSLF() throws IOException, ReflectiveOperationException {
         assumeFalse(xslfOnly());
-        SlideShow<?,?> ppt = new HSLFSlideShow();
+        SlideShow<?,?> ppt = (SlideShow<?,?>)Class.forName("org.apache.poi.hslf.usermodel.HSLFSlideShow").newInstance();
         resizeToFitText(ppt);
         ppt.close();
     }
@@ -130,8 +129,6 @@ public class TestFonts {
         fallbackMap.put("Calibri", "Mona");
         graphics.setRenderingHint(Drawable.FONT_FALLBACK, fallbackMap);
         graphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-
-        DrawFactory.getInstance(graphics).fixFonts(graphics);
 
         tb.resizeToFitText(graphics);
         graphics.dispose();

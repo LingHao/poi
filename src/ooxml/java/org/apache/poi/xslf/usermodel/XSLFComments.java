@@ -17,11 +17,11 @@
 
 package org.apache.poi.xslf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.IOException;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.util.Beta;
 import org.apache.xmlbeans.XmlException;
@@ -31,42 +31,37 @@ import org.openxmlformats.schemas.presentationml.x2006.main.CmLstDocument;
 
 @Beta
 public class XSLFComments extends POIXMLDocumentPart {
-    private final CTCommentList _comments;
-    
+    private final CmLstDocument doc;
+
     /**
      * Create a new set of slide comments
      */
     XSLFComments() {
-       super();
-       CmLstDocument doc = CmLstDocument.Factory.newInstance();
-       _comments = doc.addNewCmLst();
+        doc = CmLstDocument.Factory.newInstance();
     }
 
     /**
      * Construct a SpreadsheetML slide comments from a package part
      *
      * @param part the package part holding the comments data,
-     * the content type must be <code>application/vnd.openxmlformats-officedocument.comments+xml</code>
-     * 
+     *             the content type must be <code>application/vnd.openxmlformats-officedocument.comments+xml</code>
      * @since POI 3.14-Beta1
      */
     XSLFComments(PackagePart part) throws IOException, XmlException {
         super(part);
 
-        CmLstDocument doc =
-           CmLstDocument.Factory.parse(getPackagePart().getInputStream(), DEFAULT_XML_OPTIONS);
-        _comments = doc.getCmLst();
+        doc = CmLstDocument.Factory.parse(getPackagePart().getInputStream(), DEFAULT_XML_OPTIONS);
     }
 
     public CTCommentList getCTCommentsList() {
-       return _comments;
+        return doc.getCmLst();
     }
-    
+
     public int getNumberOfComments() {
-       return _comments.sizeOfCmArray();
+        return doc.getCmLst().sizeOfCmArray();
     }
-    
+
     public CTComment getCommentAt(int pos) {
-       return _comments.getCmArray(pos);
+        return doc.getCmLst().getCmArray(pos);
     }
 }

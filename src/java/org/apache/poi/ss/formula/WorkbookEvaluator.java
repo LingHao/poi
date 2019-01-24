@@ -398,6 +398,9 @@ public final class WorkbookEvaluator {
             dbgEvaluationOutputIndent++;
         }
 
+        EvaluationSheet evalSheet = ec.getWorkbook().getSheet(ec.getSheetIndex());
+        EvaluationCell evalCell = evalSheet.getCell(ec.getRowIndex(), ec.getColumnIndex());
+
         Stack<ValueEval> stack = new Stack<>();
         for (int i = 0, iSize = ptgs.length; i < iSize; i++) {
             // since we don't know how to handle these yet :(
@@ -436,37 +439,41 @@ public final class WorkbookEvaluator {
                     continue;
                 }
                 if (attrPtg.isOptimizedIf()) {
-                    ValueEval arg0 = stack.pop();
-                    boolean evaluatedPredicate;
-                    try {
-                        evaluatedPredicate = IfFunc.evaluateFirstArg(arg0, ec.getRowIndex(), ec.getColumnIndex());
-                    } catch (EvaluationException e) {
-                        stack.push(e.getErrorEval());
-                        int dist = attrPtg.getData();
-                        i+= countTokensToBeSkipped(ptgs, i, dist);
-                        attrPtg = (AttrPtg) ptgs[i];
-                        dist = attrPtg.getData()+1;
-                        i+= countTokensToBeSkipped(ptgs, i, dist);
-                        continue;
-                    }
-                    if (evaluatedPredicate) {
-                        // nothing to skip - true param follows
-                    } else {
-                        int dist = attrPtg.getData();
-                        i+= countTokensToBeSkipped(ptgs, i, dist);
-                        Ptg nextPtg = ptgs[i+1];
-                        if (ptgs[i] instanceof AttrPtg && nextPtg instanceof FuncVarPtg && 
-                                // in order to verify that there is no third param, we need to check 
-                                // if we really have the IF next or some other FuncVarPtg as third param, e.g. ROW()/COLUMN()!
-                                ((FuncVarPtg)nextPtg).getFunctionIndex() == FunctionMetadataRegistry.FUNCTION_INDEX_IF) {
-                            // this is an if statement without a false param (as opposed to MissingArgPtg as the false param)
-                            i++;
-                            stack.push(BoolEval.FALSE);
+                    if(!evalCell.isPartOfArrayFormulaGroup()) {
+                        ValueEval arg0 = stack.pop();
+                        boolean evaluatedPredicate;
+
+                        try {
+                            evaluatedPredicate = IfFunc.evaluateFirstArg(arg0, ec.getRowIndex(), ec.getColumnIndex());
+                        } catch (EvaluationException e) {
+                            stack.push(e.getErrorEval());
+                            int dist = attrPtg.getData();
+                            i += countTokensToBeSkipped(ptgs, i, dist);
+                            attrPtg = (AttrPtg) ptgs[i];
+                            dist = attrPtg.getData() + 1;
+                            i += countTokensToBeSkipped(ptgs, i, dist);
+                            continue;
+                        }
+                        if (evaluatedPredicate) {
+                            // nothing to skip - true param follows
+                        } else {
+                            int dist = attrPtg.getData();
+                            i += countTokensToBeSkipped(ptgs, i, dist);
+                            Ptg nextPtg = ptgs[i + 1];
+                            if (ptgs[i] instanceof AttrPtg && nextPtg instanceof FuncVarPtg &&
+                                    // in order to verify that there is no third param, we need to check
+                                    // if we really have the IF next or some other FuncVarPtg as third param, e.g. ROW()/COLUMN()!
+                                    ((FuncVarPtg) nextPtg).getFunctionIndex() == FunctionMetadataRegistry.FUNCTION_INDEX_IF) {
+                                // this is an if statement without a false param (as opposed to MissingArgPtg as the false param)
+                                //i++;
+                                stack.push(arg0);
+                                stack.push(BoolEval.FALSE);
+                            }
                         }
                     }
                     continue;
                 }
-                if (attrPtg.isSkip()) {
+                if (attrPtg.isSkip() && !evalCell.isPartOfArrayFormulaGroup()) {
                     int dist = attrPtg.getData()+1;
                     i+= countTokensToBeSkipped(ptgs, i, dist);
                     if (stack.peek() == MissingArgEval.instance) {
@@ -759,7 +766,7 @@ public final class WorkbookEvaluator {
             return evaluateNameFormula(nameRecord.getNameDefinition(), ec);
         }
 
-        throw new RuntimeException("Don't now how to evalate name '" + nameRecord.getNameText() + "'");
+        throw new RuntimeException("Don't now how to evaluate name '" + nameRecord.getNameText() + "'");
     }
     
     /**
@@ -823,7 +830,7 @@ public final class WorkbookEvaluator {
      * <p>
      * Returns a single value e.g. a cell formula result or boolean value for conditional formatting.
      * 
-     * @param formula
+     * @param formula The formula to evaluate
      * @param target cell context for the operation
      * @param region containing the cell
      * @return value
@@ -840,8 +847,8 @@ public final class WorkbookEvaluator {
      * offset position relative to the top left of the range.
      * <p>
      * Returns a ValueEval that may be one or more values, such as the allowed values for a data validation constraint.
-     * 
-     * @param formula
+     *
+     * @param formula The formula to evaluate
      * @param target cell context for the operation
      * @param region containing the cell
      * @return ValueEval for one or more values

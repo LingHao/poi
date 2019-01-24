@@ -24,7 +24,7 @@
 
 package org.apache.poi.poifs.crypt.dsig;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 import static org.apache.poi.poifs.crypt.dsig.facets.SignatureFacet.XML_DIGSIG_NS;
 
 import java.io.IOException;
@@ -59,7 +59,6 @@ import org.apache.jcp.xml.dsig.internal.dom.DOMSignedInfo;
 import org.apache.jcp.xml.dsig.internal.dom.DOMSubTreeData;
 import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
-import org.apache.poi.openxml4j.opc.ContentTypes;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.PackagePartName;
@@ -73,7 +72,7 @@ import org.apache.poi.poifs.crypt.HashAlgorithm;
 import org.apache.poi.poifs.crypt.dsig.SignatureConfig.SignatureConfigurable;
 import org.apache.poi.poifs.crypt.dsig.facets.SignatureFacet;
 import org.apache.poi.poifs.crypt.dsig.services.RelationshipTransformService;
-import org.apache.poi.util.DocumentHelper;
+import org.apache.poi.ooxml.util.DocumentHelper;
 import org.apache.poi.util.POILogFactory;
 import org.apache.poi.util.POILogger;
 import org.apache.xml.security.Init;
@@ -150,7 +149,7 @@ import org.w3c.dom.events.EventTarget;
  * <p>To use SignatureInfo and its sibling classes, you'll need to have the following libs
  * in the classpath:</p>
  * <ul>
- * <li>BouncyCastle bcpkix and bcprov (tested against 1.59)</li>
+ * <li>BouncyCastle bcpkix and bcprov (tested against 1.60)</li>
  * <li>Apache Santuario "xmlsec" (tested against 2.1.0)</li>
  * <li>and slf4j-api (tested against 1.7.25)</li>
  * </ul>
@@ -247,16 +246,7 @@ public class SignatureInfo implements SignatureConfigurable {
                 "system properties.");
         }
         
-        try {
-            final DigestOutputStream dos;
-            switch (algo) {
-                case md2: case md5: case sha1: case sha256: case sha384: case sha512:
-                    dos = new SignatureOutputStream(algo, key);
-                    break;
-                default:
-                    dos = new DigestOutputStream(algo, key);
-                    break;
-            }
+        try (final DigestOutputStream dos = getDigestStream(algo, key)) {
             dos.init();
 
             final Document document = (Document)xmlSignContext.getParent();
@@ -267,6 +257,15 @@ public class SignatureInfo implements SignatureConfigurable {
             return DatatypeConverter.printBase64Binary(dos.sign());
         } catch (GeneralSecurityException|IOException|TransformException e) {
             throw new EncryptedDocumentException(e);
+        }
+    }
+
+    private static DigestOutputStream getDigestStream(final HashAlgorithm algo, final PrivateKey key) {
+        switch (algo) {
+            case md2: case md5: case sha1: case sha256: case sha384: case sha512:
+                return new SignatureOutputStream(algo, key);
+            default:
+                return new DigestOutputStream(algo, key);
         }
     }
 
@@ -316,7 +315,7 @@ public class SignatureInfo implements SignatureConfigurable {
                             } catch (InvalidFormatException e) {
                                 LOG.log(POILogger.WARN, "Reference to signature is invalid.", e);
                             }
-                        } while (sigPart == null);
+                        } while (sigRelPart == null);
                         return new SignaturePart(sigRelPart, signatureConfig);
                     }
 
@@ -377,9 +376,8 @@ public class SignatureInfo implements SignatureConfigurable {
             xmlSignContext.setURIDereferencer(uriDereferencer);
         }
 
-        for (Map.Entry<String,String> me : signatureConfig.getNamespacePrefixes().entrySet()) {
-            xmlSignContext.putNamespacePrefix(me.getKey(), me.getValue());
-        }
+        signatureConfig.getNamespacePrefixes().forEach(xmlSignContext::putNamespacePrefix);
+
         xmlSignContext.setDefaultNamespacePrefix("");
         // signatureConfig.getNamespacePrefixes().get(XML_DIGSIG_NS));
 
@@ -516,9 +514,7 @@ public class SignatureInfo implements SignatureConfigurable {
     protected void writeDocument(Document document) throws MarshalException {
         XmlOptions xo = new XmlOptions();
         Map<String,String> namespaceMap = new HashMap<>();
-        for(Map.Entry<String,String> entry : signatureConfig.getNamespacePrefixes().entrySet()){
-            namespaceMap.put(entry.getValue(), entry.getKey());
-        }
+        signatureConfig.getNamespacePrefixes().forEach((k,v) -> namespaceMap.put(v,k));
         xo.setSaveSuggestedPrefixes(namespaceMap);
         xo.setUseDefaultNamespace();
 
@@ -530,43 +526,58 @@ public class SignatureInfo implements SignatureConfigurable {
          */
         OPCPackage pkg = signatureConfig.getOpcPackage();
 
-        PackagePartName sigPartName, sigsPartName;
         try {
-            // <Override PartName="/_xmlsignatures/sig1.xml" ContentType="application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml"/>
-            sigPartName = PackagingURIHelper.createPartName("/_xmlsignatures/sig1.xml");
             // <Default Extension="sigs" ContentType="application/vnd.openxmlformats-package.digital-signature-origin"/>
-            sigsPartName = PackagingURIHelper.createPartName("/_xmlsignatures/origin.sigs");
-        } catch (InvalidFormatException e) {
-            throw new MarshalException(e);
-        }
+            final DSigRelation originDesc = DSigRelation.ORIGIN_SIGS;
+            PackagePartName originPartName = PackagingURIHelper.createPartName(originDesc.getFileName(0));
 
-        PackagePart sigPart = pkg.getPart(sigPartName);
-        if (sigPart == null) {
-            sigPart = pkg.createPart(sigPartName, ContentTypes.DIGITAL_SIGNATURE_XML_SIGNATURE_PART);
-        }
+            PackagePart originPart = pkg.getPart(originPartName);
+            if (originPart == null) {
+                // touch empty marker file
+                originPart = pkg.createPart(originPartName, originDesc.getContentType());
+                pkg.addRelationship(originPartName, TargetMode.INTERNAL, originDesc.getRelation());
+            }
 
-        try {
-            OutputStream os = sigPart.getOutputStream();
-            SignatureDocument sigDoc = SignatureDocument.Factory.parse(document, DEFAULT_XML_OPTIONS);
-            sigDoc.save(os, xo);
-            os.close();
+            // <Override PartName="/_xmlsignatures/sig1.xml" ContentType="application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml"/>
+            final DSigRelation sigDesc = DSigRelation.SIG;
+            int nextSigIdx = pkg.getUnusedPartIndex(sigDesc.getDefaultFileName());
+
+            if (!signatureConfig.isAllowMultipleSignatures()) {
+                PackageRelationshipCollection prc = originPart.getRelationshipsByType(sigDesc.getRelation());
+                for (int i=2; i<nextSigIdx; i++) {
+                    PackagePartName pn = PackagingURIHelper.createPartName(sigDesc.getFileName(i));
+                    for (PackageRelationship rel : prc) {
+                        PackagePart pp = originPart.getRelatedPart(rel);
+                        if (pp.getPartName().equals(pn)) {
+                            originPart.removeRelationship(rel.getId());
+                            prc.removeRelationship(rel.getId());
+                            break;
+                        }
+                    }
+
+                    pkg.removePart(pkg.getPart(pn));
+                }
+                nextSigIdx = 1;
+            }
+
+
+            PackagePartName sigPartName = PackagingURIHelper.createPartName(sigDesc.getFileName(nextSigIdx));
+            PackagePart sigPart = pkg.getPart(sigPartName);
+            if (sigPart == null) {
+                sigPart = pkg.createPart(sigPartName, sigDesc.getContentType());
+                originPart.addRelationship(sigPartName, TargetMode.INTERNAL, sigDesc.getRelation());
+            } else {
+                sigPart.clear();
+            }
+
+            try (OutputStream os = sigPart.getOutputStream()) {
+                SignatureDocument sigDoc = SignatureDocument.Factory.parse(document, DEFAULT_XML_OPTIONS);
+                sigDoc.save(os, xo);
+            }
+
         } catch (Exception e) {
             throw new MarshalException("Unable to write signature document", e);
         }
-
-        PackagePart sigsPart = pkg.getPart(sigsPartName);
-        if (sigsPart == null) {
-            // touch empty marker file
-            sigsPart = pkg.createPart(sigsPartName, ContentTypes.DIGITAL_SIGNATURE_ORIGIN_PART);
-        }
-
-        PackageRelationshipCollection relCol = pkg.getRelationshipsByType(PackageRelationshipTypes.DIGITAL_SIGNATURE_ORIGIN);
-        for (PackageRelationship pr : relCol) {
-            pkg.removeRelationship(pr.getId());
-        }
-        pkg.addRelationship(sigsPartName, TargetMode.INTERNAL, PackageRelationshipTypes.DIGITAL_SIGNATURE_ORIGIN);
-
-        sigsPart.addRelationship(sigPartName, TargetMode.INTERNAL, PackageRelationshipTypes.DIGITAL_SIGNATURE);
     }
 
     private Element getDsigElement(final Document document, final String localName) {

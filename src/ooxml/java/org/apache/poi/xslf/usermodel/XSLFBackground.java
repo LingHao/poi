@@ -21,7 +21,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.geom.Rectangle2D;
 
-import org.apache.poi.POIXMLException;
+import org.apache.poi.ooxml.POIXMLException;
 import org.apache.poi.sl.usermodel.Background;
 import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.xmlbeans.XmlObject;
@@ -77,7 +77,20 @@ public class XSLFBackground extends XSLFSimpleShape
     
     public void setFillColor(Color color) {
         CTBackgroundProperties bgPr = getBgPr(true);
-        
+
+        if (bgPr.isSetBlipFill()) {
+            bgPr.unsetBlipFill();
+        }
+        if (bgPr.isSetGradFill()) {
+            bgPr.unsetGradFill();
+        }
+        if (bgPr.isSetGrpFill()) {
+            bgPr.unsetGrpFill();
+        }
+        if (bgPr.isSetPattFill()) {
+            bgPr.unsetPattFill();
+        }
+
         if (color == null) {
             if (bgPr.isSetSolidFill()) {
                 bgPr.unsetSolidFill();

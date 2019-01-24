@@ -19,7 +19,7 @@
 
 package org.apache.poi.xslf.usermodel;
 
-import org.apache.poi.POIXMLException;
+import org.apache.poi.ooxml.POIXMLException;
 import org.apache.poi.sl.usermodel.ConnectorShape;
 import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.util.Beta;
@@ -51,7 +51,7 @@ public class XSLFConnectorShape extends XSLFSimpleShape
         CTConnectorNonVisual nvSpPr = ct.addNewNvCxnSpPr();
         CTNonVisualDrawingProps cnv = nvSpPr.addNewCNvPr();
         cnv.setName("Connector " + shapeId);
-        cnv.setId(shapeId + 1);
+        cnv.setId(shapeId);
         nvSpPr.addNewCNvCxnSpPr();
         nvSpPr.addNewNvPr();
         CTShapeProperties spPr = ct.addNewSpPr();

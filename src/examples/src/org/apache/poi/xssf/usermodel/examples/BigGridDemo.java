@@ -30,10 +30,10 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.poi.openxml4j.opc.internal.ZipHelper;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.FillPatternType;
@@ -58,29 +58,28 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * <p>
  * If you really want to use this approach, which is also the one that SXSSF
  * does for you, it works as follows:
- * 
+ *
  * 1. create a template workbook, create sheets and global objects such as cell styles, number formats, etc.
  * 2. create an application that streams data in a text file
  * 3. Substitute the sheet in the template with the generated data
  *
  * <p>
- *  Since 3.8 POI provides a low-memory footprint SXSSF API, which implements 
+ *  Since 3.8 POI provides a low-memory footprint SXSSF API, which implements
  *  ths "BigGridDemo" strategy. SXSSF is an API-compatible streaming extension
- *  of XSSF to be used when very large spreadsheets have to be produced, and 
- *  heap space is limited. SXSSF achieves its low memory footprint by limiting 
- *  access to the rows that are within a sliding window, while XSSF gives access 
- *  to all rows in the document. Older rows that are no longer in the window 
+ *  of XSSF to be used when very large spreadsheets have to be produced, and
+ *  heap space is limited. SXSSF achieves its low memory footprint by limiting
+ *  access to the rows that are within a sliding window, while XSSF gives access
+ *  to all rows in the document. Older rows that are no longer in the window
  *  become inaccessible, as they are written to the disk.
  * </p>
  * See <a "http://poi.apache.org/spreadsheet/how-to.html#sxssf">
  *     http://poi.apache.org/spreadsheet/how-to.html#sxssf</a>.
-
- *
- * @author Yegor Kozlov
  */
-public class BigGridDemo {
+public final class BigGridDemo {
     private static final String XML_ENCODING = "UTF-8";
-    
+
+    private BigGridDemo() {}
+
     public static void main(String[] args) throws Exception {
 
         // Step 1. Create a template file. Setup sheets and workbook-level objects such as
@@ -100,7 +99,10 @@ public class BigGridDemo {
 
             //Step 2. Generate XML file.
             File tmp = File.createTempFile("sheet", ".xml");
-            try (Writer fw = new OutputStreamWriter(new FileOutputStream(tmp), XML_ENCODING)) {
+            try (
+                    FileOutputStream stream = new FileOutputStream(tmp);
+                    Writer fw = new OutputStreamWriter(stream, XML_ENCODING)
+                ) {
                 generate(fw, styles);
             }
 
@@ -194,21 +196,23 @@ public class BigGridDemo {
      */
     private static void substitute(File zipfile, File tmpfile, String entry, OutputStream out) throws IOException {
         try (ZipFile zip = ZipHelper.openZipFile(zipfile)) {
-            try (ZipOutputStream zos = new ZipOutputStream(out)) {
-                Enumeration<? extends ZipEntry> en = zip.entries();
+            try (ZipArchiveOutputStream zos = new ZipArchiveOutputStream(out)) {
+                Enumeration<? extends ZipArchiveEntry> en = zip.getEntries();
                 while (en.hasMoreElements()) {
-                    ZipEntry ze = en.nextElement();
+                    ZipArchiveEntry ze = en.nextElement();
                     if (!ze.getName().equals(entry)) {
-                        zos.putNextEntry(new ZipEntry(ze.getName()));
+                        zos.putArchiveEntry(new ZipArchiveEntry(ze.getName()));
                         try (InputStream is = zip.getInputStream(ze)) {
                             copyStream(is, zos);
                         }
+                        zos.closeArchiveEntry();
                     }
                 }
-                zos.putNextEntry(new ZipEntry(entry));
+                zos.putArchiveEntry(new ZipArchiveEntry(entry));
                 try (InputStream is = new FileInputStream(tmpfile)) {
                     copyStream(is, zos);
                 }
+                zos.closeArchiveEntry();
             }
         }
     }
@@ -229,17 +233,17 @@ public class BigGridDemo {
         private final Writer _out;
         private int _rownum;
 
-        public SpreadsheetWriter(Writer out){
+        SpreadsheetWriter(Writer out){
             _out = out;
         }
 
-        public void beginSheet() throws IOException {
+        void beginSheet() throws IOException {
             _out.write("<?xml version=\"1.0\" encoding=\""+XML_ENCODING+"\"?>" +
                     "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" );
             _out.write("<sheetData>\n");
         }
 
-        public void endSheet() throws IOException {
+        void endSheet() throws IOException {
             _out.write("</sheetData>");
             _out.write("</worksheet>");
         }
@@ -249,7 +253,7 @@ public class BigGridDemo {
          *
          * @param rownum 0-based row number
          */
-        public void insertRow(int rownum) throws IOException {
+        void insertRow(int rownum) throws IOException {
             _out.write("<row r=\""+(rownum+1)+"\">\n");
             this._rownum = rownum;
         }
@@ -257,14 +261,16 @@ public class BigGridDemo {
         /**
          * Insert row end marker
          */
-        public void endRow() throws IOException {
+        void endRow() throws IOException {
             _out.write("</row>\n");
         }
 
         public void createCell(int columnIndex, String value, int styleIndex) throws IOException {
             String ref = new CellReference(_rownum, columnIndex).formatAsString();
             _out.write("<c r=\""+ref+"\" t=\"inlineStr\"");
-            if(styleIndex != -1) _out.write(" s=\""+styleIndex+"\"");
+            if(styleIndex != -1) {
+                _out.write(" s=\""+styleIndex+"\"");
+            }
             _out.write(">");
             _out.write("<is><t>"+value+"</t></is>");
             _out.write("</c>");
@@ -277,7 +283,9 @@ public class BigGridDemo {
         public void createCell(int columnIndex, double value, int styleIndex) throws IOException {
             String ref = new CellReference(_rownum, columnIndex).formatAsString();
             _out.write("<c r=\""+ref+"\" t=\"n\"");
-            if(styleIndex != -1) _out.write(" s=\""+styleIndex+"\"");
+            if(styleIndex != -1) {
+                _out.write(" s=\""+styleIndex+"\"");
+            }
             _out.write(">");
             _out.write("<v>"+value+"</v>");
             _out.write("</c>");

@@ -17,7 +17,7 @@
 
 package org.apache.poi.xssf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,10 +29,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.ss.SpreadsheetVersion;
-import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Table;
@@ -284,7 +283,7 @@ public class XSSFTable extends POIXMLDocumentPart implements Table {
         }
         
         // check if name is unique and calculate unique column id 
-        long nextColumnId = 1; 
+        long nextColumnId = 0; 
         for (XSSFTableColumn tableColumn : getColumns()) {
             if (columnName != null && columnName.equalsIgnoreCase(tableColumn.getName())) {
                 throw new IllegalArgumentException("Column '" + columnName
@@ -292,6 +291,8 @@ public class XSSFTable extends POIXMLDocumentPart implements Table {
             }
             nextColumnId = Math.max(nextColumnId, tableColumn.getId());
         }
+        // Bug #62740, the logic was just re-using the existing max ID, not incrementing beyond it.
+        nextColumnId++;
         
         // Add the new Column
         CTTableColumn column = columns.insertNewTableColumn(columnIndex);
@@ -475,14 +476,9 @@ public class XSSFTable extends POIXMLDocumentPart implements Table {
      * this method does not create or remove any columns and does not change any
      * cell values.
      * 
-     * @deprecated Use {@link #setTableArea} instead, which will ensure that the
-     *             the amount of columns always matches table area always width.
-     * 
      * @see "Open Office XML Part 4: chapter 3.5.1.2, attribute ref"
      * @since 3.17 beta 1
      */
-    @Deprecated
-    @Removal(version="4.2.0")
     public void setCellReferences(AreaReference refs) {
         setCellRef(refs);
     }
@@ -526,7 +522,7 @@ public class XSSFTable extends POIXMLDocumentPart implements Table {
      * Updating the area with this method will create new column as necessary to
      * the right side of the table but will not modify any cell values.
      * 
-     * @param refs
+     * @param tableArea
      *            the new area of the table
      * @throws IllegalArgumentException
      *             if the area is {@code null} or not
@@ -951,15 +947,15 @@ public class XSSFTable extends POIXMLDocumentPart implements Table {
      * @see org.apache.poi.ss.usermodel.Table#contains(org.apache.poi.ss.usermodel.Cell)
      * @since 3.17 beta 1
      */
-    public boolean contains(Cell cell) {
+    public boolean contains(CellReference cell) {
         if (cell == null) return false;
         // check if cell is on the same sheet as the table
-        if ( ! getSheetName().equals(cell.getSheet().getSheetName())) return false;
+        if ( ! getSheetName().equals(cell.getSheetName())) return false;
         // check if the cell is inside the table
-        if (cell.getRowIndex() >= getStartRowIndex()
-            && cell.getRowIndex() <= getEndRowIndex()
-            && cell.getColumnIndex() >= getStartColIndex()
-            && cell.getColumnIndex() <= getEndColIndex()) {
+        if (cell.getRow() >= getStartRowIndex()
+            && cell.getRow() <= getEndRowIndex()
+            && cell.getCol() >= getStartColIndex()
+            && cell.getCol() <= getEndColIndex()) {
             return true;
         }
         return false;

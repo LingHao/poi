@@ -17,7 +17,6 @@
 
 package org.apache.poi.hdgf;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -30,7 +29,6 @@ import org.apache.poi.hdgf.streams.Stream;
 import org.apache.poi.hdgf.streams.StringsStream;
 import org.apache.poi.hdgf.streams.TrailerStream;
 import org.apache.poi.poifs.filesystem.DirectoryNode;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.LittleEndian;
@@ -46,30 +44,23 @@ import org.apache.poi.util.LocaleUtil;
 public final class HDGFDiagram extends POIReadOnlyDocument {
 	private static final String VISIO_HEADER = "Visio (TM) Drawing\r\n";
 
-	private byte[] _docstream;
-
-	private short version;
 	private long docSize;
 
 	private Pointer trailerPointer;
 	private TrailerStream trailer;
 
-	private ChunkFactory chunkFactory;
-	private PointerFactory ptrFactory;
-
 	public HDGFDiagram(POIFSFileSystem fs) throws IOException {
 		this(fs.getRoot());
 	}
-	public HDGFDiagram(NPOIFSFileSystem fs) throws IOException {
-		this(fs.getRoot());
-	}
+
 	public HDGFDiagram(DirectoryNode dir) throws IOException {
 		super(dir);
 
 		// Grab the document stream
-		InputStream is = dir.createDocumentInputStream("VisioDocument");
-		_docstream = IOUtils.toByteArray(is);
-		is.close();
+		final byte[] _docstream;
+		try (InputStream is = dir.createDocumentInputStream("VisioDocument")) {
+			_docstream = IOUtils.toByteArray(is);
+		}
 
 		// Check it's really visio
 		String typeString = new String(_docstream, 0, 20, LocaleUtil.CHARSET_1252 );
@@ -78,14 +69,14 @@ public final class HDGFDiagram extends POIReadOnlyDocument {
 		}
 
 		// Grab the version number, 0x1a -> 0x1b
-		version = LittleEndian.getShort(_docstream, 0x1a);
+		short version = LittleEndian.getShort(_docstream, 0x1a);
 		// Grab the document size, 0x1c -> 0x1f
 		docSize = LittleEndian.getUInt(_docstream, 0x1c);
 		// ??? 0x20 -> 0x23
 
 		// Create the Chunk+Pointer Factories for the document version
-		ptrFactory = new PointerFactory(version);
-		chunkFactory = new ChunkFactory(version);
+		PointerFactory ptrFactory = new PointerFactory(version);
+		ChunkFactory chunkFactory = new ChunkFactory(version);
 
 		// Grab the pointer to the trailer
 		trailerPointer = ptrFactory.createPointer(_docstream, 0x24);
@@ -101,13 +92,19 @@ public final class HDGFDiagram extends POIReadOnlyDocument {
 	/**
 	 * Returns the TrailerStream, which is at the root of the
 	 *  tree of Streams.
+	 *
+	 * @return the TrailerStream
 	 */
 	public TrailerStream getTrailerStream() { return trailer; }
+
 	/**
 	 * Returns all the top level streams, which are the streams
 	 *  pointed to by the TrailerStream.
+	 *
+	 * @return the top level streams
 	 */
 	public Stream[] getTopLevelStreams() { return trailer.getPointedToStreams(); }
+
 	public long getDocumentSize() { return docSize; }
 
 	/**
@@ -153,16 +150,5 @@ public final class HDGFDiagram extends POIReadOnlyDocument {
 				System.err.println("\t\t" + ss._getContentsLength());
 			}
 		}
-	}
-
-	/**
-	 * For testing only
-	 */
-	public static void main(String args[]) throws Exception {
-		NPOIFSFileSystem pfs = new NPOIFSFileSystem(new File(args[0]));
-		HDGFDiagram hdgf = new HDGFDiagram(pfs);
-		hdgf.debug();
-		hdgf.close();
-		pfs.close();
 	}
 }

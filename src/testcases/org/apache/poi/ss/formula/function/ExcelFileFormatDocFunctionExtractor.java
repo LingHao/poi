@@ -449,9 +449,7 @@ public final class ExcelFileFormatDocFunctionExtractor {
 		try {
 			xr.parse(inSrc);
 			is.close();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		} catch (SAXException e) {
+		} catch (IOException | SAXException e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -514,15 +512,13 @@ public final class ExcelFileFormatDocFunctionExtractor {
 		ps.println(" (size=" + effDocFile.length() + ", md5=" + getFileMD5(effDocFile) + ")");
 		ps.println("#");
 		ps.println("#Columns: (index, name, minParams, maxParams, returnClass, paramClasses, isVolatile, hasFootnote )");
-		ps.println("");
+		ps.println();
 		try {
 		    // can't use ZipHelper here, because its in a different module
 			ZipFile zf = new ZipFile(effDocFile);
 			InputStream is = zf.getInputStream(zf.getEntry("content.xml"));
 			extractFunctionData(new FunctionDataCollector(ps), is);
 			zf.close();
-		} catch (ZipException e) {
-			throw new RuntimeException(e);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}

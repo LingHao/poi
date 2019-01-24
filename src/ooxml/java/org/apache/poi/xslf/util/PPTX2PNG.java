@@ -24,6 +24,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -31,7 +32,7 @@ import java.util.TreeSet;
 
 import javax.imageio.ImageIO;
 
-import org.apache.poi.sl.draw.DrawFactory;
+import org.apache.poi.sl.draw.Drawable;
 import org.apache.poi.sl.usermodel.Slide;
 import org.apache.poi.sl.usermodel.SlideShow;
 import org.apache.poi.sl.usermodel.SlideShowFactory;
@@ -74,13 +75,13 @@ public class PPTX2PNG {
         for (int i = 0; i < args.length; i++) {
             if (args[i].startsWith("-")) {
                 if ("-scale".equals(args[i])) {
-                    scale = Float.parseFloat(args[++i]);
+                    scale = Float.parseFloat(args[++i]); // lgtm[java/index-out-of-bounds]
                 } else if ("-slide".equals(args[i])) {
-                    slidenumStr = args[++i];
+                    slidenumStr = args[++i]; // lgtm[java/index-out-of-bounds]
                 } else if ("-format".equals(args[i])) {
-                    format = args[++i];
+                    format = args[++i]; // lgtm[java/index-out-of-bounds]
                 } else if ("-outdir".equals(args[i])) {
-                    outdir = new File(args[++i]);
+                    outdir = new File(args[++i]); // lgtm[java/index-out-of-bounds]
                 } else if ("-quiet".equals(args[i])) {
                     quiet = true;
                 }
@@ -98,11 +99,11 @@ public class PPTX2PNG {
             usage("Invalid format given");
             return;
         }
-    
+
         if (outdir == null) {
             outdir = file.getParentFile();
         }
-        
+
         if (!"null".equals(format) && (outdir == null || !outdir.exists() || !outdir.isDirectory())) {
             usage("Output directory doesn't exist");
             return;
@@ -112,7 +113,7 @@ public class PPTX2PNG {
             usage("Invalid scale given");
             return;
         }
-        
+
         if (!quiet) {
             System.out.println("Processing " + file);
         }
@@ -139,13 +140,13 @@ public class PPTX2PNG {
 
                 BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D graphics = img.createGraphics();
-                DrawFactory.getInstance(graphics).fixFonts(graphics);
 
                 // default rendering options
                 graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
                 graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
                 graphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+                graphics.setRenderingHint(Drawable.BUFFERED_IMAGE, new WeakReference<>(img));
 
                 graphics.scale(scale, scale);
 
@@ -169,7 +170,7 @@ public class PPTX2PNG {
             System.out.println("Done");
         }
     }
-    
+
     private static Set<Integer> slideIndexes(final int slideCount, String range) {
         Set<Integer> slideIdx = new TreeSet<>();
         if ("-1".equals(range)) {
@@ -178,7 +179,7 @@ public class PPTX2PNG {
             }
         } else {
             for (String subrange : range.split(",")) {
-                String idx[] = subrange.split("-");
+                String[] idx = subrange.split("-");
                 switch (idx.length) {
                 default:
                 case 0: break;

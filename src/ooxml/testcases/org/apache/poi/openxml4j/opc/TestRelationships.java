@@ -17,6 +17,8 @@
 
 package org.apache.poi.openxml4j.opc;
 
+import static org.apache.poi.openxml4j.opc.TestContentType.isOldXercesActive;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -54,7 +56,7 @@ public class TestRelationships extends TestCase {
         PackageRelationshipCollection rels = pkg.getRelationshipsByType(PackageRelationshipTypes.CORE_DOCUMENT);
         PackageRelationship coreDocRelationship = rels.getRelationship(0);
         PackagePart corePart = pkg.getPart(coreDocRelationship);
-        String relIds[] = { "rId1", "rId2", "rId3" };
+        String[] relIds = {"rId1", "rId2", "rId3"};
         for (String relId : relIds) {
             PackageRelationship rel = corePart.getRelationship(relId);
             assertNotNull(rel);
@@ -418,28 +420,8 @@ public class TestRelationships extends TestCase {
             if (pr.getRelationshipType().equals(PackageRelationshipTypes.EXTENDED_PROPERTIES))
                 foundExtPropRel = true;
         }
-        assertTrue("Core/Doc Relationship not found in " + p.getRelationships(), foundDocRel);
-        assertTrue("Core Props Relationship not found in " + p.getRelationships(), foundCorePropRel);
-        assertTrue("Ext Props Relationship not found in " + p.getRelationships(), foundExtPropRel);
-        
-        // Should have normal work parts
-        boolean foundCoreProps = false, foundDocument = false, foundTheme1 = false;
-        for (PackagePart part : p.getParts()) {
-            if (part.getPartName().toString().equals("/docProps/core.xml")) {
-                assertEquals(ContentTypes.CORE_PROPERTIES_PART, part.getContentType());
-                foundCoreProps = true;
-            }
-            if (part.getPartName().toString().equals("/word/document.xml")) {
-                assertEquals(XWPFRelation.DOCUMENT.getContentType(), part.getContentType());
-                foundDocument = true;
-            }
-            if (part.getPartName().toString().equals("/word/theme/theme1.xml")) {
-                assertEquals(XWPFRelation.THEME.getContentType(), part.getContentType());
-                foundTheme1 = true;
-            }
-        }
-        assertTrue("Core not found in " + p.getParts(), foundCoreProps);
-        assertTrue("Document not found in " + p.getParts(), foundDocument);
-        assertTrue("Theme1 not found in " + p.getParts(), foundTheme1);
+        assertEquals("Core/Doc Relationship not found in " + p.getRelationships(), isOldXercesActive(), foundDocRel);
+        assertEquals("Core Props Relationship not found in " + p.getRelationships(), isOldXercesActive(), foundCorePropRel);
+        assertEquals("Ext Props Relationship not found in " + p.getRelationships(), isOldXercesActive(), foundExtPropRel);
     }
 }

@@ -32,6 +32,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.List;
@@ -57,32 +58,30 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestHwmfParsing {
+
+    private static final POIDataSamples samples = POIDataSamples.getSlideShowInstance();
+
+
     @Test
     public void parse() throws IOException {
-        File f = POIDataSamples.getSlideShowInstance().getFile("santa.wmf");
-        FileInputStream fis = new FileInputStream(f);
-        HwmfPicture wmf = new HwmfPicture(fis);
-        fis.close();
-        List<HwmfRecord> records = wmf.getRecords();
-        assertEquals(581, records.size());
+        try (InputStream fis = samples.openResourceAsStream("santa.wmf")) {
+            HwmfPicture wmf = new HwmfPicture(fis);
+            List<HwmfRecord> records = wmf.getRecords();
+            assertEquals(581, records.size());
+        }
     }
 
     @Test(expected = RecordFormatException.class)
     public void testInfiniteLoop() throws Exception {
-        File f = POIDataSamples.getSlideShowInstance().getFile("61338.wmf");
-        FileInputStream fis = null;
-        try {
-            fis = new FileInputStream(f);
-            HwmfPicture wmf = new HwmfPicture(fis);
-        } finally {
-            fis.close();
+        try (InputStream is = samples.openResourceAsStream("61338.wmf")) {
+            new HwmfPicture(is);
         }
     }
 
     @Test
     @Ignore("This is work-in-progress and not a real unit test ...")
     public void paint() throws IOException {
-        File f = POIDataSamples.getSlideShowInstance().getFile("santa.wmf");
+        File f = samples.getFile("santa.wmf");
         // File f = new File("bla.wmf");
         FileInputStream fis = new FileInputStream(f);
         HwmfPicture wmf = new HwmfPicture(fis);
@@ -133,7 +132,7 @@ public class TestHwmfParsing {
                     if (pd.getType() != PictureType.WMF) {
                         continue;
                     }
-                    byte wmfData[] = pd.getData();
+                    byte[] wmfData = pd.getData();
                     String filename = String.format(Locale.ROOT, "%s-%04d.wmf", basename, wmfIdx);
                     FileOutputStream fos = new FileOutputStream(new File(outdir, filename));
                     fos.write(wmfData);
@@ -157,8 +156,9 @@ public class TestHwmfParsing {
         File outdir = new File("build/wmf");
         outdir.mkdirs();
         final String startFile = "";
-        File files[] = indir.listFiles(new FileFilter() {
+        File[] files = indir.listFiles(new FileFilter() {
             boolean foundStartFile;
+
             @Override
             public boolean accept(File pathname) {
                 foundStartFile |= startFile.isEmpty() || pathname.getName().contains(startFile);
@@ -223,11 +223,11 @@ public class TestHwmfParsing {
         //this happens to work on this test file, but you need to
         //do what Graphics does by maintaining the stack, etc.!
         for (HwmfRecord r : wmf.getRecords()) {
-            if (r.getRecordType().equals(HwmfRecordType.createFontIndirect)) {
+            if (r.getWmfRecordType().equals(HwmfRecordType.createFontIndirect)) {
                 HwmfFont font = ((HwmfText.WmfCreateFontIndirect)r).getFont();
                 charset = (font.getCharset().getCharset() == null) ? LocaleUtil.CHARSET_1252 : font.getCharset().getCharset();
             }
-            if (r.getRecordType().equals(HwmfRecordType.extTextOut)) {
+            if (r.getWmfRecordType().equals(HwmfRecordType.extTextOut)) {
                 HwmfText.WmfExtTextOut textOut = (HwmfText.WmfExtTextOut)r;
                 sb.append(textOut.getText(charset)).append("\n");
             }
@@ -251,11 +251,11 @@ public class TestHwmfParsing {
         //this happens to work on this test file, but you need to
         //do what Graphics does by maintaining the stack, etc.!
         for (HwmfRecord r : wmf.getRecords()) {
-            if (r.getRecordType().equals(HwmfRecordType.createFontIndirect)) {
+            if (r.getWmfRecordType().equals(HwmfRecordType.createFontIndirect)) {
                 HwmfFont font = ((HwmfText.WmfCreateFontIndirect)r).getFont();
                 charset = (font.getCharset().getCharset() == null) ? LocaleUtil.CHARSET_1252 : font.getCharset().getCharset();
             }
-            if (r.getRecordType().equals(HwmfRecordType.extTextOut)) {
+            if (r.getWmfRecordType().equals(HwmfRecordType.extTextOut)) {
                 HwmfText.WmfExtTextOut textOut = (HwmfText.WmfExtTextOut)r;
                 sb.append(textOut.getText(charset)).append("\n");
             }

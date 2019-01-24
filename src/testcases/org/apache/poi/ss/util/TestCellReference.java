@@ -17,14 +17,24 @@
 
 package org.apache.poi.ss.util;
 
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.SpreadsheetVersion;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 
 /**
  * Tests that the common CellReference works as we need it to.
@@ -56,6 +66,27 @@ public final class TestCellReference {
 
         cellReference = new CellReference(sheet, row, col, absRow, absCol);
         assertEquals("Sheet1!A$1", cellReference.formatAsString());
+
+        cellReference = new CellReference(sheet+"!$A1");
+        assertFalse(cellReference.isRowAbsolute());
+        assertTrue(cellReference.isColAbsolute());
+
+        cellReference = new CellReference(sheet+"!A$1");
+        assertTrue(cellReference.isRowAbsolute());
+        assertFalse(cellReference.isColAbsolute());
+    }
+
+    @Test
+    public void testCtorFromCell() {
+        Cell cell = mock(Cell.class, RETURNS_DEEP_STUBS);
+        when(cell.getSheet().getSheetName()).thenReturn("sheet");
+
+        CellReference result = new CellReference(cell);
+        assertEquals("sheet", result.getSheetName());
+        assertEquals(cell.getRowIndex(), result.getRow());
+        assertEquals(cell.getColumnIndex(), result.getCol());
+        assertFalse(result.isRowAbsolute());
+        assertFalse(result.isColAbsolute());
     }
 
     @Test
@@ -88,7 +119,7 @@ public final class TestCellReference {
         assertEquals(0, cellReference.getCol());
         parts = cellReference.getCellRefParts();
         assertNotNull(parts);
-        assertEquals(null, parts[0]);
+        assertNull(parts[0]);
         assertEquals("1", parts[1]);
         assertEquals("A", parts[2]);
 
@@ -97,7 +128,7 @@ public final class TestCellReference {
         assertEquals(26, cellReference.getCol());
         parts = cellReference.getCellRefParts();
         assertNotNull(parts);
-        assertEquals(null, parts[0]);
+        assertNull(parts[0]);
         assertEquals("1", parts[1]);
         assertEquals("AA", parts[2]);
 
@@ -106,7 +137,7 @@ public final class TestCellReference {
         assertEquals(26, cellReference.getCol());
         parts = cellReference.getCellRefParts();
         assertNotNull(parts);
-        assertEquals(null, parts[0]);
+        assertNull(parts[0]);
         assertEquals("100", parts[1]);
         assertEquals("AA", parts[2]);
 
@@ -115,7 +146,7 @@ public final class TestCellReference {
         assertEquals(702, cellReference.getCol());
         parts = cellReference.getCellRefParts();
         assertNotNull(parts);
-        assertEquals(null, parts[0]);
+        assertNull(parts[0]);
         assertEquals("300", parts[1]);
         assertEquals("AAA", parts[2]);
 
@@ -124,7 +155,7 @@ public final class TestCellReference {
         assertEquals(26*26+25, cellReference.getCol());
         parts = cellReference.getCellRefParts();
         assertNotNull(parts);
-        assertEquals(null, parts[0]);
+        assertNull(parts[0]);
         assertEquals("100521", parts[1]);
         assertEquals("ZZ", parts[2]);
 
@@ -133,7 +164,7 @@ public final class TestCellReference {
         assertEquals(26*26*26 + 25*26 + 24 - 1, cellReference.getCol());
         parts = cellReference.getCellRefParts();
         assertNotNull(parts);
-        assertEquals(null, parts[0]);
+        assertNull(parts[0]);
         assertEquals("987", parts[1]);
         assertEquals("ZYX", parts[2]);
 
@@ -141,7 +172,7 @@ public final class TestCellReference {
         cellReference = new CellReference(cellRef);
         parts = cellReference.getCellRefParts();
         assertNotNull(parts);
-        assertEquals(null, parts[0]);
+        assertNull(parts[0]);
         assertEquals("10065", parts[1]);
         assertEquals("AABC", parts[2]);
     }
@@ -325,8 +356,8 @@ public final class TestCellReference {
     
     @Test
     public void getSheetName() {
-        assertEquals(null, new CellReference("A5").getSheetName());
-        assertEquals(null, new CellReference(null, 0, 0, false, false).getSheetName());
+        assertNull(new CellReference("A5").getSheetName());
+        assertNull(new CellReference(null, 0, 0, false, false).getSheetName());
         // FIXME: CellReference is inconsistent
         assertEquals("", new CellReference("", 0, 0, false, false).getSheetName());
         assertEquals("Sheet1", new CellReference("Sheet1!A5").getSheetName());
@@ -347,12 +378,11 @@ public final class TestCellReference {
         assertEquals("hash code", ref1.hashCode(), ref2.hashCode());
 
         //noinspection ObjectEqualsNull
-        assertFalse("null", ref1.equals(null));
-        assertFalse("3D vs 2D", ref1.equals(new CellReference("A5")));
-        //noinspection EqualsBetweenInconvertibleTypes
-        assertFalse("type", ref1.equals(new Integer(0)));
+        assertNotEquals("null", null, ref1);
+        assertNotEquals("3D vs 2D", ref1, new CellReference("A5"));
+        assertNotEquals("type", ref1, 0L);
     }
-    
+
     @Test
     public void isRowWithinRange() {
         SpreadsheetVersion ss = SpreadsheetVersion.EXCEL2007;
@@ -368,10 +398,10 @@ public final class TestCellReference {
         assertFalse("1 beyond last row", CellReference.isRowWithinRange(1048576, ss));
     }
 
-    @Test(expected=NumberFormatException.class)
+    @Test
     public void isRowWithinRangeNonInteger_BigNumber() {
         String rowNum = "4000000000";
-        CellReference.isRowWithinRange(rowNum, SpreadsheetVersion.EXCEL2007);
+        assertFalse(CellReference.isRowWithinRange(rowNum, SpreadsheetVersion.EXCEL2007));
     }
     
     @Test(expected=NumberFormatException.class)
@@ -393,6 +423,7 @@ public final class TestCellReference {
     public void unquotedSheetName() {
         new CellReference("'Sheet 1!A5");
     }
+
     @Test(expected=IllegalArgumentException.class)
     public void mismatchedQuotesSheetName() {
         new CellReference("Sheet 1!A5");
@@ -415,6 +446,7 @@ public final class TestCellReference {
     public void negativeRow() {
         new CellReference("sheet", -2, 0, false, false);
     }
+
     @Test(expected=IllegalArgumentException.class)
     public void negativeColumn() {
         new CellReference("sheet", 0, -2, false, false);
@@ -424,8 +456,24 @@ public final class TestCellReference {
     public void classifyEmptyStringCellReference() {
         CellReference.classifyCellReference("", SpreadsheetVersion.EXCEL2007);
     }
+
     @Test(expected=IllegalArgumentException.class)
     public void classifyInvalidFirstCharCellReference() {
         CellReference.classifyCellReference("!A5", SpreadsheetVersion.EXCEL2007);
+    }
+
+    @Test
+    public void test62828() {
+        final Workbook wb = new HSSFWorkbook();
+        final Sheet sheet = wb.createSheet("Ctor test");
+        final String sheetName = sheet.getSheetName();
+        final Row row = sheet.createRow(0);
+        final Cell cell = row.createCell(0);
+        final CellReference goodCellRef = new CellReference(sheetName, cell.getRowIndex(), cell.getColumnIndex(), true,
+                true);
+        final CellReference badCellRef = new CellReference(cell);
+
+        assertEquals("'Ctor test'!$A$1", goodCellRef.formatAsString());
+        assertEquals("'Ctor test'!A1", badCellRef.formatAsString());
     }
 }

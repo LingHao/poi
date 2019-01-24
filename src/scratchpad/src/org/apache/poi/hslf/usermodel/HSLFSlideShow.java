@@ -38,6 +38,7 @@ import org.apache.poi.ddf.EscherContainerRecord;
 import org.apache.poi.ddf.EscherOptRecord;
 import org.apache.poi.hpsf.ClassID;
 import org.apache.poi.hpsf.ClassIDPredefined;
+import org.apache.poi.hpsf.extractor.HPSFPropertiesExtractor;
 import org.apache.poi.hslf.exceptions.CorruptPowerPointFileException;
 import org.apache.poi.hslf.exceptions.HSLFException;
 import org.apache.poi.hslf.model.HeadersFooters;
@@ -45,12 +46,10 @@ import org.apache.poi.hslf.model.MovieShape;
 import org.apache.poi.hslf.record.*;
 import org.apache.poi.hslf.record.SlideListWithText.SlideAtomsSet;
 import org.apache.poi.poifs.filesystem.DirectoryNode;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
 import org.apache.poi.poifs.filesystem.Ole10Native;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.sl.usermodel.MasterSheet;
 import org.apache.poi.sl.usermodel.PictureData.PictureType;
-import org.apache.poi.sl.usermodel.Resources;
 import org.apache.poi.sl.usermodel.SlideShow;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.Internal;
@@ -71,6 +70,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 
 	/** Powerpoint document entry/stream name */
     public static final String POWERPOINT_DOCUMENT = "PowerPoint Document";
+	public static final String PP95_DOCUMENT = "PP40";
 
     enum LoadSavePhase {
         INIT, LOADED
@@ -148,7 +148,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
      * Constructs a Powerpoint document from an POIFSFileSystem.
      */
     @SuppressWarnings("resource")
-    public HSLFSlideShow(NPOIFSFileSystem npoifs) throws IOException {
+    public HSLFSlideShow(POIFSFileSystem npoifs) throws IOException {
         this(new HSLFSlideShowImpl(npoifs));
     }
 
@@ -163,7 +163,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
     /**
      * @return the current loading/saving phase
      */
-    protected static LoadSavePhase getLoadSavePhase() {
+    static LoadSavePhase getLoadSavePhase() {
         return loadSavePhase.get();
     }
 
@@ -184,9 +184,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 				// PersistPtr, remove their old positions
 				int[] ids = pph.getKnownSlideIDs();
 				for (int id : ids) {
-					if (mostRecentByBytes.containsKey(id)) {
-						mostRecentByBytes.remove(id);
-					}
+					mostRecentByBytes.remove(id);
 				}
 
 				// Now, update the byte level locations with their latest values
@@ -204,7 +202,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 		// We'll also want to be able to turn the slide IDs into a position
 		// in this array
 		_sheetIdToCoreRecordsLookup = new HashMap<>();
-		Integer[] allIDs = mostRecentByBytes.keySet().toArray(new Integer[mostRecentByBytes.size()]);
+		Integer[] allIDs = mostRecentByBytes.keySet().toArray(new Integer[0]);
 		Arrays.sort(allIDs);
 		for (int i = 0; i < allIDs.length; i++) {
 			_sheetIdToCoreRecordsLookup.put(allIDs[i], i);
@@ -533,6 +531,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 	/**
 	 * Returns the data of all the embedded OLE object in the SlideShow
 	 */
+	@SuppressWarnings("WeakerAccess")
 	public HSLFObjectData[] getEmbeddedObjects() {
 		return _hslfSlideShow.getEmbeddedObjects();
 	}
@@ -562,7 +561,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 	/**
 	 * Helper method for usermodel: Get the font collection
 	 */
-	protected FontCollection getFontCollection() {
+	FontCollection getFontCollection() {
 		return _fonts;
 	}
 
@@ -581,6 +580,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 	 * @param newSlideNumber
 	 *            The new slide number (1 based)
 	 */
+	@SuppressWarnings("WeakerAccess")
 	public void reorderSlide(int oldSlideNumber, int newSlideNumber) {
 		// Ensure these numbers are valid
 		if (oldSlideNumber < 1 || newSlideNumber < 1) {
@@ -595,6 +595,9 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 		// The order of slides is defined by the order of slide atom sets in the
 		// SlideListWithText container.
 		SlideListWithText slwt = _documentRecord.getSlideSlideListWithText();
+		if (slwt == null) {
+			throw new IllegalStateException("Slide record not defined.");
+		}
 		SlideAtomsSet[] sas = slwt.getSlideAtomsSets();
 
 		SlideAtomsSet tmp = sas[oldSlideNumber - 1];
@@ -611,7 +614,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 			lst.addAll(Arrays.asList(s.getSlideRecords()));
 		}
 
-		Record[] r = lst.toArray(new Record[lst.size()]);
+		Record[] r = lst.toArray(new Record[0]);
 		slwt.setChildRecord(r);
 	}
 
@@ -626,6 +629,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 	 *            the index of the slide to remove (0-based)
 	 * @return the slide that was removed from the slide show.
 	 */
+	@SuppressWarnings("WeakerAccess")
 	public HSLFSlide removeSlide(int index) {
 		int lastSlideIdx = _slides.size() - 1;
 		if (index < 0 || index > lastSlideIdx) {
@@ -634,6 +638,9 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 		}
 
 		SlideListWithText slwt = _documentRecord.getSlideSlideListWithText();
+		if (slwt == null) {
+			throw new IllegalStateException("Slide record not defined.");
+		}
 		SlideAtomsSet[] sas = slwt.getSlideAtomsSets();
 
 		List<Record> records = new ArrayList<>();
@@ -655,8 +662,8 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 		if (sa.isEmpty()) {
 			_documentRecord.removeSlideListWithText(slwt);
 		} else {
-			slwt.setSlideAtomsSets(sa.toArray(new SlideAtomsSet[sa.size()]));
-			slwt.setChildRecord(records.toArray(new Record[records.size()]));
+			slwt.setSlideAtomsSets(sa.toArray(new SlideAtomsSet[0]));
+			slwt.setChildRecord(records.toArray(new Record[0]));
 		}
 
 		// if the removed slide had notes - remove references to them too
@@ -666,21 +673,25 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 			SlideListWithText nslwt = _documentRecord.getNotesSlideListWithText();
 			records = new ArrayList<>();
 			ArrayList<SlideAtomsSet> na = new ArrayList<>();
-			for (SlideAtomsSet ns : nslwt.getSlideAtomsSets()) {
-				if (ns.getSlidePersistAtom().getSlideIdentifier() == notesId) {
-                    continue;
-                }
-				na.add(ns);
-				records.add(ns.getSlidePersistAtom());
-				if (ns.getSlideRecords() != null) {
-					records.addAll(Arrays.asList(ns.getSlideRecords()));
+			if (nslwt != null) {
+				for (SlideAtomsSet ns : nslwt.getSlideAtomsSets()) {
+					if (ns.getSlidePersistAtom().getSlideIdentifier() == notesId) {
+						continue;
+					}
+					na.add(ns);
+					records.add(ns.getSlidePersistAtom());
+					if (ns.getSlideRecords() != null) {
+						records.addAll(Arrays.asList(ns.getSlideRecords()));
+					}
+				}
+
+				if (!na.isEmpty()) {
+					nslwt.setSlideAtomsSets(na.toArray(new SlideAtomsSet[0]));
+					nslwt.setChildRecord(records.toArray(new Record[0]));
 				}
 			}
 			if (na.isEmpty()) {
 				_documentRecord.removeSlideListWithText(nslwt);
-			} else {
-				nslwt.setSlideAtomsSets(na.toArray(new SlideAtomsSet[na.size()]));
-				nslwt.setChildRecord(records.toArray(new Record[records.size()]));
 			}
 		}
 
@@ -711,10 +722,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 		SlidePersistAtom prev = null;
 		for (SlideAtomsSet sas : slist.getSlideAtomsSets()) {
 			SlidePersistAtom spa = sas.getSlidePersistAtom();
-			if (spa.getSlideIdentifier() < 0) {
-				// This is for a master slide
-				// Odd, since we only deal with the Slide SLWT
-			} else {
+			if (spa.getSlideIdentifier() >= 0) {
 				// Must be for a real slide
 				if (prev == null) {
 					prev = spa;
@@ -847,12 +855,9 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 	        throw new IllegalArgumentException("Unsupported picture format: " + format);
 	    }
 		byte[] data = IOUtils.safelyAllocate(pict.length(), MAX_RECORD_LENGTH);
-        FileInputStream is = new FileInputStream(pict);
-		try {
+		try (FileInputStream is = new FileInputStream(pict)) {
 			IOUtils.readFully(is, data);
-		} finally {
-            is.close();
-        }
+		}
 		return addPicture(data, format);
 	}
 
@@ -886,6 +891,21 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 	}
 
 	/**
+	 * Add a font in this presentation and also embed its font data
+	 *
+	 * @param fontData the EOT font data as stream
+	 *
+	 * @return the registered HSLFFontInfo - the font info object is unique based on the typeface
+	 *
+	 * @since POI 4.1.0
+	 */
+	public HSLFFontInfo addFont(InputStream fontData) throws IOException {
+		Document doc = getDocumentRecord();
+		doc.getDocumentAtom().setSaveWithFonts(true);
+		return doc.getEnvironment().getFontCollection().addFont(fontData);
+	}
+
+	/**
 	 * Get a font by index
 	 *
 	 * @param idx
@@ -904,6 +924,11 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 	 */
 	public int getNumberOfFonts() {
 		return getDocumentRecord().getEnvironment().getFontCollection().getNumberOfFonts();
+	}
+
+	@Override
+	public List<HSLFFontInfo> getFonts() {
+		return getDocumentRecord().getEnvironment().getFontCollection().getFonts();
 	}
 
 	/**
@@ -968,6 +993,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 	 *            "ShockwaveFlash.ShockwaveFlash.9"
 	 * @return 0-based index of the control
 	 */
+	@SuppressWarnings("unused")
 	public int addControl(String name, String progId) {
 		ExControl ctrl = new ExControl();
 		ctrl.setProgId(progId);
@@ -1013,7 +1039,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 		ExEmbed exEmbed = new ExEmbed();
         // remove unneccessary infos, so we don't need to specify the type
         // of the ole object multiple times
-        Record children[] = exEmbed.getChildRecords();
+        Record[] children = exEmbed.getChildRecords();
         exEmbed.removeChild(children[2]);
         exEmbed.removeChild(children[3]);
         exEmbed.removeChild(children[4]);
@@ -1047,7 +1073,12 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 		return objectId;
 	}
 
-	protected int addToObjListAtom(RecordContainer exObj) {
+	@Override
+    public HPSFPropertiesExtractor getMetadataTextExtractor() {
+        return new HPSFPropertiesExtractor(getSlideShowImpl());
+    }
+	
+	int addToObjListAtom(RecordContainer exObj) {
 		ExObjList lst = getDocumentRecord().getExObjList(true);
 		ExObjListAtom objAtom = lst.getExObjListAtom();
 		// increment the object ID seed
@@ -1059,7 +1090,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
 		return objectId;
 	}
 
-    protected static Map<String,ClassID> getOleMap() {
+    private static Map<String,ClassID> getOleMap() {
     	Map<String,ClassID> olemap = new HashMap<>();
     	olemap.put(POWERPOINT_DOCUMENT, ClassIDPredefined.POWERPOINT_V8.getClassID());
     	// as per BIFF8 spec
@@ -1072,7 +1103,7 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
     	return olemap;
     }
 
-    protected int addPersistentObject(PositionDependentRecord slideRecord) {
+    private int addPersistentObject(PositionDependentRecord slideRecord) {
     	slideRecord.setLastOnDiskOffset(HSLFSlideShowImpl.UNSET_OFFSET);
 		_hslfSlideShow.appendRootLevelRecord((Record)slideRecord);
 
@@ -1110,14 +1141,8 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
     }
 
     @Override
-    public MasterSheet<HSLFShape,HSLFTextParagraph> createMasterSheet() throws IOException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Resources getResources() {
-        // TODO Auto-generated method stub
+    public MasterSheet<HSLFShape,HSLFTextParagraph> createMasterSheet() {
+		// TODO implement or throw exception if not supported
         return null;
     }
 
@@ -1133,4 +1158,9 @@ public final class HSLFSlideShow implements SlideShow<HSLFShape,HSLFTextParagrap
     public void close() throws IOException {
         _hslfSlideShow.close();
     }
+
+	@Override
+	public Object getPersistDocument() {
+		return getSlideShowImpl();
+	}
 }

@@ -90,6 +90,7 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class TestAllFiles {
     private static final File ROOT_DIR = new File("test-data");
+    private static final boolean IGNORE_SCRATCHPAD = Boolean.getBoolean("scratchpad.ignore");
 
     public static final String[] SCAN_EXCLUDES = new String[] { "**/.svn/**", "lost+found", "**/.git/**" };
 
@@ -98,6 +99,7 @@ public class TestAllFiles {
     
     // map file extensions to the actual mappers
     public static final Map<String, FileHandler> HANDLERS = new HashMap<>();
+
     static {
         // Excel
         HANDLERS.put(".xls", new HSSFFileHandler());
@@ -107,17 +109,17 @@ public class TestAllFiles {
         HANDLERS.put(".xlsb", new XSSFBFileHandler());
 
         // Word
-        HANDLERS.put(".doc", new HWPFFileHandler());
+        HANDLERS.put(".doc", IGNORE_SCRATCHPAD ? new HPSFFileHandler() : new HWPFFileHandler());
         HANDLERS.put(".docx", new XWPFFileHandler());
         HANDLERS.put(".dotx", new XWPFFileHandler());
         HANDLERS.put(".docm", new XWPFFileHandler());
 
         // OpenXML4J files
-        HANDLERS.put(".ooxml", new OPCFileHandler());		// OPCPackage
-        HANDLERS.put(".zip", new OPCFileHandler());      // OPCPackage
+        HANDLERS.put(".ooxml", new OPCFileHandler());
+        HANDLERS.put(".zip", new OPCFileHandler());
 
         // Powerpoint
-        HANDLERS.put(".ppt", new HSLFFileHandler());
+        HANDLERS.put(".ppt", IGNORE_SCRATCHPAD ? new HPSFFileHandler() : new HSLFFileHandler());
         HANDLERS.put(".pptx", new XSLFFileHandler());
         HANDLERS.put(".pptm", new XSLFFileHandler());
         HANDLERS.put(".ppsm", new XSLFFileHandler());
@@ -126,13 +128,13 @@ public class TestAllFiles {
         HANDLERS.put(".potx", new XSLFFileHandler());
 
         // Outlook
-        HANDLERS.put(".msg", new HSMFFileHandler());
+        HANDLERS.put(".msg", IGNORE_SCRATCHPAD ? new HPSFFileHandler() : new HSMFFileHandler());
 
         // Publisher
-        HANDLERS.put(".pub", new HPBFFileHandler());
+        HANDLERS.put(".pub", IGNORE_SCRATCHPAD ? new HPSFFileHandler() : new HPBFFileHandler());
 
         // Visio - binary
-        HANDLERS.put(".vsd", new HDGFFileHandler());
+        HANDLERS.put(".vsd", IGNORE_SCRATCHPAD ? new HPSFFileHandler() : new HDGFFileHandler());
         
         // Visio - ooxml
         HANDLERS.put(".vsdm", new XDGFFileHandler());
@@ -153,7 +155,7 @@ public class TestAllFiles {
         HANDLERS.put(".adm", new HPSFFileHandler());
 
         // Microsoft TNEF
-        HANDLERS.put(".dat", new HMEFFileHandler());
+        HANDLERS.put(".dat", IGNORE_SCRATCHPAD ? new HPSFFileHandler() : new HMEFFileHandler());
 
         // TODO: are these readable by some of the formats?
         HANDLERS.put(".wri", new NullFileHandler());
@@ -185,11 +187,11 @@ public class TestAllFiles {
         HANDLERS.put(".tif", new NullFileHandler());
         HANDLERS.put(".tiff", new NullFileHandler());
         HANDLERS.put(".wav", new NullFileHandler());
-        HANDLERS.put(".pfx", new NullFileHandler());
         HANDLERS.put(".xml", new NullFileHandler());
         HANDLERS.put(".csv", new NullFileHandler());
         HANDLERS.put(".ods", new NullFileHandler());
         HANDLERS.put(".ttf", new NullFileHandler());
+        HANDLERS.put(".fntdata", new NullFileHandler());
         // VBA source files
         HANDLERS.put(".vba", new NullFileHandler());
         HANDLERS.put(".bas", new NullFileHandler());
@@ -209,7 +211,13 @@ public class TestAllFiles {
         HANDLERS.put("spreadsheet/BigSSTRecord2CR7", new NullFileHandler());
         HANDLERS.put("spreadsheet/BigSSTRecordCR", new NullFileHandler());
         HANDLERS.put("spreadsheet/test_properties1", new NullFileHandler());
-        
+
+        // keystore files
+        HANDLERS.put(".pfx", new NullFileHandler());
+        HANDLERS.put(".pem", new NullFileHandler());
+        HANDLERS.put(".jks", new NullFileHandler());
+        HANDLERS.put(".pkcs12", new NullFileHandler());
+
         Map<String,String> passmap = new HashMap<>();
         passmap.put("slideshow/Password_Protected-hello.ppt", "hello");
         passmap.put("slideshow/Password_Protected-56-hello.ppt", "hello");
@@ -287,6 +295,8 @@ public class TestAllFiles {
         "document/Bug50955.doc",
         "document/57843.doc",
         "slideshow/PPT95.ppt",
+        "slideshow/pp40only.ppt",
+        "slideshow/Divino_Revelado.pptx",
         "openxml4j/OPCCompliance_CoreProperties_DCTermsNamespaceLimitedUseFAIL.docx",
         "openxml4j/OPCCompliance_CoreProperties_DoNotUseCompatibilityMarkupFAIL.docx",
         "openxml4j/OPCCompliance_CoreProperties_LimitedXSITypeAttribute_NotPresentFAIL.docx",
@@ -295,10 +305,11 @@ public class TestAllFiles {
         "openxml4j/OPCCompliance_CoreProperties_UnauthorizedXMLLangAttributeFAIL.docx",
         "openxml4j/OPCCompliance_DerivedPartNameFAIL.docx",
         "openxml4j/invalid.xlsx",
+        "openxml4j/62592.thmx",
         "spreadsheet/54764-2.xlsx",   // see TestXSSFBugs.bug54764()
         "spreadsheet/54764.xlsx",     // see TestXSSFBugs.bug54764()
         "poifs/unknown_properties.msg", // POIFS properties corrupted
-        "poifs/only-zero-byte-streams.ole2", // No actual contents
+        (IGNORE_SCRATCHPAD ? "" : "poifs/only-zero-byte-streams.ole2"), // No actual contents
         "spreadsheet/poc-xmlbomb.xlsx",  // contains xml-entity-expansion
         "spreadsheet/poc-xmlbomb-empty.xlsx",  // contains xml-entity-expansion
         "spreadsheet/poc-shared-strings.xlsx",  // contains shared-string-entity-expansion
@@ -320,6 +331,9 @@ public class TestAllFiles {
         "spreadsheet/sample.strict.xlsx",
         "spreadsheet/57914.xlsx",
 
+        // files with XML entities
+        "openxml4j/ContentTypeHasEntities.ooxml",
+
         // non-TNEF files
         "ddf/Container.dat",
         "ddf/47143.dat",
@@ -330,8 +344,6 @@ public class TestAllFiles {
     );
 
     private static final Set<String> IGNORED = unmodifiableHashSet(
-        // need JDK8+ - https://bugs.openjdk.java.net/browse/JDK-8038081
-        "slideshow/42474-2.ppt",
         // OPC handler works / XSSF handler fails
         "spreadsheet/57181.xlsm",
         "spreadsheet/61300.xls"//intentionally fuzzed -- used to cause infinite loop
@@ -438,8 +450,17 @@ public class TestAllFiles {
             }
         }
 
-        // let some file handlers do additional stuff
-        handler.handleAdditional(inputFile);
+        try {
+            // let some file handlers do additional stuff
+            handler.handleAdditional(inputFile);
+        } catch (AssumptionViolatedException e) {
+            // file handler ignored this file
+        } catch (Exception e) {
+            if(!EXPECTED_FAILURES.contains(file) && !AbstractFileHandler.EXPECTED_EXTRACTOR_FAILURES.contains(file)) {
+                System.out.println("Failed: " + file);
+                throw new Exception("While handling " + file, e);
+            }
+        }
     }
 
     public static String getExtension(String file) {
@@ -453,15 +474,15 @@ public class TestAllFiles {
 
     public static class NullFileHandler implements FileHandler {
         @Override
-        public void handleFile(InputStream stream, String path) throws Exception {
+        public void handleFile(InputStream stream, String path) {
         }
 
         @Override
-        public void handleExtracting(File file) throws Exception {
+        public void handleExtracting(File file) {
         }
 
         @Override
-        public void handleAdditional(File file) throws Exception {
+        public void handleAdditional(File file) {
         }
     }
 }

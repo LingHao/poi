@@ -19,6 +19,7 @@ package org.apache.poi.xslf.usermodel;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -37,7 +38,7 @@ import org.openxmlformats.schemas.presentationml.x2006.main.CTNotesMasterIdListE
 import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideIdListEntry;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideMasterIdListEntry;
 
-public class TestXMLSlideShow extends BaseTestSlideShow {
+public class TestXMLSlideShow extends BaseTestSlideShow<XSLFShape,XSLFTextParagraph> {
    private OPCPackage pack;
    
    @Override
@@ -51,7 +52,7 @@ public class TestXMLSlideShow extends BaseTestSlideShow {
    }
    
    @After
-   public void tearDown() throws IOException {
+   public void tearDown() {
        pack.revert();
    }
 
@@ -80,6 +81,7 @@ public class TestXMLSlideShow extends BaseTestSlideShow {
       xml.close();
    }
 
+   @SuppressWarnings("deprecation")
    @Test
    public void testSlideBasics() throws IOException {
       XMLSlideShow xml = new XMLSlideShow(pack);
@@ -135,8 +137,8 @@ public class TestXMLSlideShow extends BaseTestSlideShow {
       assertEquals(0, xml.getProperties().getExtendedProperties().getUnderlyingProperties().getCharacters());
       assertEquals(0, xml.getProperties().getExtendedProperties().getUnderlyingProperties().getLines());
 
-      assertEquals(null, xml.getProperties().getCoreProperties().getTitle());
-      assertEquals(null, xml.getProperties().getCoreProperties().getUnderlyingProperties().getSubjectProperty().getValue());
+      assertNull(xml.getProperties().getCoreProperties().getTitle());
+      assertFalse(xml.getProperties().getCoreProperties().getUnderlyingProperties().getSubjectProperty().isPresent());
       
       xml.close();
    }
@@ -145,11 +147,11 @@ public class TestXMLSlideShow extends BaseTestSlideShow {
    public void testComments() throws Exception {
       // Default sample file has none
       XMLSlideShow xml = new XMLSlideShow(pack);
-      
-      assertEquals(null, xml.getCommentAuthors());
+
+      assertNull(xml.getCommentAuthors());
       
       for (XSLFSlide slide : xml.getSlides()) {
-         assertEquals(null, slide.getComments());
+         assertTrue(slide.getComments().isEmpty());
       }
       
       // Try another with comments
@@ -166,17 +168,18 @@ public class TestXMLSlideShow extends BaseTestSlideShow {
          i++;
          
          if(i == 0) {
-            assertNotNull(slide.getComments());
-            assertEquals(1, slide.getComments().getNumberOfComments());
-            assertEquals("testdoc", slide.getComments().getCommentAt(0).getText());
-            assertEquals(0, slide.getComments().getCommentAt(0).getAuthorId());
+            assertNotNull(slide.getCommentsPart());
+            assertEquals(1, slide.getCommentsPart().getNumberOfComments());
+            assertEquals("testdoc", slide.getCommentsPart().getCommentAt(0).getText());
+            assertEquals(0, slide.getCommentsPart().getCommentAt(0).getAuthorId());
          } else if (i == 1) {
             assertNotNull(slide.getComments());
-            assertEquals(1, slide.getComments().getNumberOfComments());
-            assertEquals("test phrase", slide.getComments().getCommentAt(0).getText());
-            assertEquals(0, slide.getComments().getCommentAt(0).getAuthorId());
+            assertEquals(1, slide.getCommentsPart().getNumberOfComments());
+            assertEquals("test phrase", slide.getCommentsPart().getCommentAt(0).getText());
+            assertEquals(0, slide.getCommentsPart().getCommentAt(0).getAuthorId());
          } else {
-            assertEquals(null, slide.getComments());
+            assertNull(slide.getCommentsPart());
+            assertTrue(slide.getComments().isEmpty());
          }
       }
       
@@ -184,23 +187,20 @@ public class TestXMLSlideShow extends BaseTestSlideShow {
       xml.close();
    }
    
-   public SlideShow<?, ?> reopen(SlideShow<?, ?> show) {
-       return reopen((XMLSlideShow)show);
-   }
-
-   public static XMLSlideShow reopen(XMLSlideShow show) {
-       try {
-           BufAccessBAOS bos = new BufAccessBAOS();
-           show.write(bos);
-           return new XMLSlideShow(new ByteArrayInputStream(bos.getBuf()));
-       } catch (IOException e) {
-           fail(e.getMessage());
-           return null;
-       }
+   @Override
+   public XMLSlideShow reopen(SlideShow<XSLFShape,XSLFTextParagraph> show) {
+      try {
+         BufAccessBAOS bos = new BufAccessBAOS();
+         show.write(bos);
+         return new XMLSlideShow(new ByteArrayInputStream(bos.getBuf()));
+      } catch (IOException e) {
+         fail(e.getMessage());
+         return null;
+      }
    }
 
    private static class BufAccessBAOS extends ByteArrayOutputStream {
-       public byte[] getBuf() {
+       byte[] getBuf() {
            return buf;
        }
    }

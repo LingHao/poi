@@ -40,6 +40,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Row.MissingCellPolicy;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.SXSSFITestDataProvider;
@@ -221,7 +222,7 @@ public final class TestXSSFCell extends BaseTestXCell {
         assertEquals("a", cell.toString());
         //Gnumeric produces spreadsheets without styles
         //make sure we return null for that instead of throwing OutOfBounds
-        assertEquals(null, cell.getCellStyle());
+        assertNull(cell.getCellStyle());
 
         //try a numeric cell
         cell = sh.getRow(1).getCell(0);
@@ -230,7 +231,7 @@ public final class TestXSSFCell extends BaseTestXCell {
         assertEquals("1.0", cell.toString());
         //Gnumeric produces spreadsheets without styles
         //make sure we return null for that instead of throwing OutOfBounds
-        assertEquals(null, cell.getCellStyle());
+        assertNull(cell.getCellStyle());
         wb.close();
     }
 
@@ -564,7 +565,7 @@ public final class TestXSSFCell extends BaseTestXCell {
         // Old cell value should not have been overwritten
         assertNotEquals(CellType.BLANK, destCell.getCellType());
         assertEquals(CellType.BOOLEAN, destCell.getCellType());
-        assertEquals(true, destCell.getBooleanCellValue());
+        assertTrue(destCell.getBooleanCellValue());
     }
     
     @Test
@@ -579,12 +580,7 @@ public final class TestXSSFCell extends BaseTestXCell {
         srcCell.setHyperlink(link);
 
         // Set link cell style (optional)
-        CellStyle hlinkStyle = wb.createCellStyle();
-        Font hlinkFont = wb.createFont();
-        hlinkFont.setUnderline(Font.U_SINGLE);
-        hlinkFont.setColor(IndexedColors.BLUE.getIndex());
-        hlinkStyle.setFont(hlinkFont);
-        srcCell.setCellStyle(hlinkStyle);
+        setLinkCellStyle(wb, srcCell);
 
         // Copy hyperlink
         final CellCopyPolicy policy = new CellCopyPolicy.Builder().copyHyperlink(true).mergeHyperlink(false).build();
@@ -597,13 +593,22 @@ public final class TestXSSFCell extends BaseTestXCell {
         final List<XSSFHyperlink> links = srcCell.getSheet().getHyperlinkList();
         assertEquals("number of hyperlinks on sheet", 2, links.size());
         assertEquals("source hyperlink",
-                new CellReference(srcCell).formatAsString(), links.get(0).getCellRef());
+                new CellAddress(srcCell).formatAsString(), links.get(0).getCellRef());
         assertEquals("destination hyperlink",
-                new CellReference(destCell).formatAsString(), links.get(1).getCellRef());
+                new CellAddress(destCell).formatAsString(), links.get(1).getCellRef());
         
         wb.close();
     }
-    
+
+    private void setLinkCellStyle(Workbook wb, XSSFCell srcCell) {
+        CellStyle hlinkStyle = wb.createCellStyle();
+        Font hlinkFont = wb.createFont();
+        hlinkFont.setUnderline(Font.U_SINGLE);
+        hlinkFont.setColor(IndexedColors.BLUE.getIndex());
+        hlinkStyle.setFont(hlinkFont);
+        srcCell.setCellStyle(hlinkStyle);
+    }
+
     @Test
     public final void testCopyCellFrom_CellCopyPolicy_mergeHyperlink() throws IOException {
         setUp_testCopyCellFrom_CellCopyPolicy();
@@ -616,13 +621,8 @@ public final class TestXSSFCell extends BaseTestXCell {
         destCell.setHyperlink(link);
 
         // Set link cell style (optional)
-        CellStyle hlinkStyle = wb.createCellStyle();
-        Font hlinkFont = wb.createFont();
-        hlinkFont.setUnderline(Font.U_SINGLE);
-        hlinkFont.setColor(IndexedColors.BLUE.getIndex());
-        hlinkStyle.setFont(hlinkFont);
-        destCell.setCellStyle(hlinkStyle);
-        
+        setLinkCellStyle(wb, destCell);
+
         // Pre-condition assumptions. This test is broken if either of these fail.
         assertSame("unit test assumes srcCell and destCell are on the same sheet",
                 srcCell.getSheet(), destCell.getSheet());
@@ -639,7 +639,7 @@ public final class TestXSSFCell extends BaseTestXCell {
         links = srcCell.getSheet().getHyperlinkList();
         assertEquals("number of hyperlinks on sheet", 1, links.size());
         assertEquals("source hyperlink",
-                new CellReference(destCell).formatAsString(), links.get(0).getCellRef());
+                new CellAddress(destCell).formatAsString(), links.get(0).getCellRef());
         
         // Merge destCell's hyperlink to srcCell. Since destCell does have a hyperlink, this should copy destCell's hyperlink to srcCell.
         srcCell.copyCellFrom(destCell, policy);
@@ -649,9 +649,9 @@ public final class TestXSSFCell extends BaseTestXCell {
         links = srcCell.getSheet().getHyperlinkList();
         assertEquals("number of hyperlinks on sheet", 2, links.size());
         assertEquals("dest hyperlink",
-                new CellReference(destCell).formatAsString(), links.get(0).getCellRef());
+                new CellAddress(destCell).formatAsString(), links.get(0).getCellRef());
         assertEquals("source hyperlink",
-                new CellReference(srcCell).formatAsString(), links.get(1).getCellRef());
+                new CellAddress(srcCell).formatAsString(), links.get(1).getCellRef());
         
         wb.close();
     }
@@ -743,6 +743,11 @@ public final class TestXSSFCell extends BaseTestXCell {
             assertEquals("C13:G13", sheet.getSharedFormula(0).getRef());
 
         }
+    }
 
+    @Test(expected = IllegalStateException.class)
+    public void getErrorCellValue_returns0_onABlankCell() {
+        Cell cell = new XSSFWorkbook().createSheet().createRow(0).createCell(0);
+        cell.getErrorCellValue();
     }
 }

@@ -17,10 +17,11 @@
 
 package org.apache.poi.ss.usermodel;
 
+import static org.apache.poi.sl.SLCommonUtils.xslfOnly;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.Assume.assumeFalse;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -48,7 +49,7 @@ public class TestEmbedOLEPackage {
     private static byte[] samplePPT, samplePPTX, samplePNG;
     
     @BeforeClass
-    public static void init() throws IOException {
+    public static void init() throws IOException, ReflectiveOperationException {
         samplePPT = getSamplePPT(false);
         samplePPTX = getSamplePPT(true);
         samplePNG = POIDataSamples.getSpreadSheetInstance().readFile("logoKarmokar4.png");
@@ -68,11 +69,7 @@ public class TestEmbedOLEPackage {
 
     @Test
     public void embedHSSF() throws IOException {
-        try {
-            Class.forName("org.apache.poi.hslf.usermodel.HSLFSlideShow");
-        } catch (Exception e) {
-            assumeTrue(false);
-        }
+        assumeFalse(xslfOnly());
 
         Workbook wb1 = new HSSFWorkbook();
         addEmbeddedObjects(wb1);
@@ -85,7 +82,7 @@ public class TestEmbedOLEPackage {
 
     static void validateEmbeddedObjects(Workbook wb) throws IOException {
         boolean ooxml = wb.getClass().getName().toLowerCase(Locale.ROOT).contains("xssf");
-        byte data[] = (ooxml) ? samplePPTX : samplePPT;
+        byte[] data = (ooxml) ? samplePPTX : samplePPT;
         Iterator<Integer> shapeIds = Arrays.asList(1025,1026,2049).iterator();
         EmbeddedExtractor ee = new EmbeddedExtractor();
         for (Sheet sheet : wb) {
@@ -104,7 +101,7 @@ public class TestEmbedOLEPackage {
     static void addEmbeddedObjects(Workbook wb) throws IOException {
         boolean ooxml = wb.getClass().getName().toLowerCase(Locale.ROOT).contains("xssf");
         int picIdx = wb.addPicture(samplePNG, Workbook.PICTURE_TYPE_PNG);
-        byte data[] = (ooxml) ? samplePPTX : samplePPT;
+        byte[] data = (ooxml) ? samplePPTX : samplePPT;
         String ext = (ooxml) ? ".pptx" : ".ppt";
         
         int oleIdx1a = wb.addOlePackage(data, "dummy1a"+ext, "dummy1a"+ext, "dummy1a"+ext);
@@ -124,8 +121,9 @@ public class TestEmbedOLEPackage {
         pat2.createObjectData(anchor2, oleIdx2, picIdx);
     }
     
-    static byte[] getSamplePPT(boolean ooxml) throws IOException {
-        SlideShow<?,?> ppt = (ooxml) ? new XMLSlideShow() : new org.apache.poi.hslf.usermodel.HSLFSlideShow();
+    static byte[] getSamplePPT(boolean ooxml) throws IOException, ReflectiveOperationException {
+        SlideShow<?,?> ppt = (ooxml) ? new XMLSlideShow()
+            : (SlideShow<?,?>)Class.forName("org.apache.poi.hslf.usermodel.HSLFSlideShow").newInstance();
         Slide<?,?> slide = ppt.createSlide();
 
         AutoShape<?,?> sh1 = slide.createAutoShape();

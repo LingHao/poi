@@ -20,9 +20,9 @@ package org.apache.poi.xwpf.usermodel;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.poi.POIXMLException;
-import org.apache.poi.POIXMLFactory;
-import org.apache.poi.POIXMLRelation;
+import org.apache.poi.ooxml.POIXMLException;
+import org.apache.poi.ooxml.POIXMLFactory;
+import org.apache.poi.ooxml.POIXMLRelation;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.util.Beta;
@@ -39,12 +39,12 @@ public class XWPFChart extends XDDFChart {
     /**
      * default width of chart in emu
      */
-    public static final int DEFAULT_WIDTH = 500000;
+    public static final int DEFAULT_WIDTH = XDDFChart.DEFAULT_WIDTH;
 
     /**
      * default height of chart in emu
      */
-    public static final int DEFAULT_HEIGHT = 500000;
+    public static final int DEFAULT_HEIGHT = XDDFChart.DEFAULT_HEIGHT;
 
     // lazy initialization
     private Long checksum;
@@ -92,21 +92,11 @@ public class XWPFChart extends XDDFChart {
 
     public Long getChecksum() {
         if (this.checksum == null) {
-            InputStream is = null;
             byte[] data;
-            try {
-                is = getPackagePart().getInputStream();
+            try (InputStream is = getPackagePart().getInputStream()) {
                 data = IOUtils.toByteArray(is);
             } catch (IOException e) {
                 throw new POIXMLException(e);
-            } finally {
-                try {
-                    if (is != null) {
-                        is.close();
-                    }
-                } catch (IOException e) {
-                    throw new POIXMLException(e);
-                }
             }
             this.checksum = IOUtils.calculateChecksum(data);
         }

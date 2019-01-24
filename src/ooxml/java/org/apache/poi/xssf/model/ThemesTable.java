@@ -16,12 +16,12 @@
 ==================================================================== */
 package org.apache.poi.xssf.model;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.xssf.usermodel.IndexedColorMap;
 import org.apache.poi.xssf.usermodel.XSSFColor;
@@ -34,7 +34,7 @@ import org.openxmlformats.schemas.drawingml.x2006.main.ThemeDocument;
  * Class that represents theme of XLSX document. The theme includes specific
  * colors and fonts.
  */
-public class ThemesTable extends POIXMLDocumentPart {
+public class ThemesTable extends POIXMLDocumentPart implements Themes {
    public enum ThemeElement {
        LT1(0, "Lt1"),
        DK1(1,"Dk1"),
@@ -110,6 +110,7 @@ public class ThemesTable extends POIXMLDocumentPart {
      * @param idx A theme "index"
      * @return The mapped XSSFColor, or null if not mapped.
      */
+    @Override
     public XSSFColor getThemeColor(int idx) {
         // Theme color references are NOT positional indices into the color scheme,
         // i.e. these keys are NOT the same as the order in which theme colors appear
@@ -150,6 +151,7 @@ public class ThemesTable extends POIXMLDocumentPart {
      *  information (currently just colours) from it as
      *  required.
      */
+    @Override
     public void inheritFromThemeAsRequired(XSSFColor color) {
        if(color == null) {
           // Nothing for us to do

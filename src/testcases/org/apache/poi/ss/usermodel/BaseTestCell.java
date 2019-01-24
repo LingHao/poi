@@ -26,12 +26,18 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.ITestDataProvider;
 import org.apache.poi.ss.SpreadsheetVersion;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.util.LocaleUtil;
 import org.junit.Test;
 
@@ -66,11 +72,11 @@ public abstract class BaseTestCell {
                 CellType.FORMULA, CellType.ERROR);
 
         cell.setCellValue(false);
-        assertEquals(false, cell.getBooleanCellValue());
+        assertFalse(cell.getBooleanCellValue());
         assertEquals(CellType.BOOLEAN, cell.getCellType());
         cell.setCellValue(true);
-        assertEquals(true, cell.getBooleanCellValue());
-        assertProhibitedValueAccess(cell, CellType.NUMERIC, CellType.STRING,
+        assertTrue(cell.getBooleanCellValue());
+        assertProhibitedValueAccess(cell, CellType.NUMERIC, CellType.STRING, CellType.BOOLEAN,
                 CellType.FORMULA, CellType.ERROR);
 
         cell.setCellValue(factory.createRichTextString("Foo"));
@@ -156,14 +162,14 @@ public abstract class BaseTestCell {
         assertEquals(0, c.getRowIndex());
         assertEquals(1, c.getColumnIndex());
         c.setCellValue(true);
-        assertEquals("B1 value", true, c.getBooleanCellValue());
+        assertTrue("B1 value", c.getBooleanCellValue());
 
         // C1
         c=r.createCell(2);
         assertEquals(0, c.getRowIndex());
         assertEquals(2, c.getColumnIndex());
         c.setCellValue(false);
-        assertEquals("C1 value", false, c.getBooleanCellValue());
+        assertFalse("C1 value", c.getBooleanCellValue());
 
         // Make sure values are saved and re-read correctly.
         Workbook wb2 = _testDataProvider.writeOutAndReadBack(wb1);
@@ -177,13 +183,13 @@ public abstract class BaseTestCell {
         assertEquals(0, c.getRowIndex());
         assertEquals(1, c.getColumnIndex());
         assertEquals(CellType.BOOLEAN, c.getCellType());
-        assertEquals("B1 value", true, c.getBooleanCellValue());
+        assertTrue("B1 value", c.getBooleanCellValue());
         
         c = r.getCell(2);
         assertEquals(0, c.getRowIndex());
         assertEquals(2, c.getColumnIndex());
         assertEquals(CellType.BOOLEAN, c.getCellType());
-        assertEquals("C1 value", false, c.getBooleanCellValue());
+        assertFalse("C1 value", c.getBooleanCellValue());
         
         wb2.close();
     }
@@ -276,7 +282,7 @@ public abstract class BaseTestCell {
         cs = c.getCellStyle();
 
         assertNotNull("Formula Cell Style", cs);
-        assertEquals("Font Index Matches", f.getIndexAsInt(), cs.getFontIndex());
+        assertEquals("Font Index Matches", f.getIndexAsInt(), cs.getFontIndexAsInt());
         assertEquals("Top Border", BorderStyle.THIN, cs.getBorderTop());
         assertEquals("Left Border", BorderStyle.THIN, cs.getBorderLeft());
         assertEquals("Right Border", BorderStyle.THIN, cs.getBorderRight());
@@ -301,7 +307,7 @@ public abstract class BaseTestCell {
 
         // create date-formatted cell
         Calendar c = LocaleUtil.getLocaleCalendar();
-        c.set(2010, 01, 02, 00, 00, 00);
+        c.set(2010, Calendar.FEBRUARY, 2, 0, 0, 0);
         r.createCell(7).setCellValue(c);
         CellStyle dateStyle = wb1.createCellStyle();
         short formatId = wb1.getCreationHelper().createDataFormat().getFormat("m/d/yy h:mm"); // any date format will do
@@ -426,7 +432,7 @@ public abstract class BaseTestCell {
         cell.setCellType(CellType.BOOLEAN);
 
         assertEquals(CellType.BOOLEAN, cell.getCellType());
-        assertEquals(true, cell.getBooleanCellValue());
+        assertTrue(cell.getBooleanCellValue());
         cell.setCellType(CellType.STRING);
         assertEquals("TRUE", cell.getRichStringCellValue().getString());
 
@@ -434,7 +440,7 @@ public abstract class BaseTestCell {
         cell.setCellValue("FALSE");
         cell.setCellType(CellType.BOOLEAN);
         assertEquals(CellType.BOOLEAN, cell.getCellType());
-        assertEquals(false, cell.getBooleanCellValue());
+        assertFalse(cell.getBooleanCellValue());
         cell.setCellType(CellType.STRING);
         assertEquals("FALSE", cell.getRichStringCellValue().getString());
         
@@ -479,7 +485,7 @@ public abstract class BaseTestCell {
         cell.setCellErrorValue(FormulaError.NAME.getCode());
         cell.setCellValue(true);
         // Identify bug 46479c
-        assertEquals(true, cell.getBooleanCellValue());
+        assertTrue(cell.getBooleanCellValue());
         
         wb.close();
     }
@@ -541,7 +547,7 @@ public abstract class BaseTestCell {
         fe.clearAllCachedResultValues();
         fe.evaluateFormulaCell(cellA1);
         confirmCannotReadString(cellA1);
-        assertEquals(true, cellA1.getBooleanCellValue());
+        assertTrue(cellA1.getBooleanCellValue());
         cellA1.setCellType(CellType.STRING);
         assertEquals("TRUE", cellA1.getStringCellValue());
 
@@ -572,7 +578,7 @@ public abstract class BaseTestCell {
         cell.setCellValue(true);
         cell.setCellType(CellType.BOOLEAN);
         assertTrue("Identified bug 46479d", cell.getBooleanCellValue());
-        assertEquals(true, cell.getBooleanCellValue());
+        assertTrue(cell.getBooleanCellValue());
         
         wb.close();
     }
@@ -626,7 +632,9 @@ public abstract class BaseTestCell {
         Workbook wb = _testDataProvider.createWorkbook();
         Cell cell = wb.createSheet("Sheet1").createRow(0).createCell(0);
         cell.setCellFormula("B1&C1");
+        assertEquals(CellType.FORMULA, cell.getCellType());
         cell.setCellValue(wb.getCreationHelper().createRichTextString("hello"));
+        assertEquals(CellType.FORMULA, cell.getCellType());
         wb.close();
     }
 
@@ -714,10 +722,10 @@ public abstract class BaseTestCell {
         assertTrue(style.getLocked());
         assertFalse(style.getHidden());
         assertEquals(0, style.getIndention());
-        assertEquals(0, style.getFontIndex());
+        assertEquals(0, style.getFontIndexAsInt());
         assertEquals(HorizontalAlignment.GENERAL, style.getAlignment());
         assertEquals(0, style.getDataFormat());
-        assertEquals(false, style.getWrapText());
+        assertFalse(style.getWrapText());
 
         CellStyle style2 = wb1.createCellStyle();
         assertTrue(style2.getLocked());
@@ -1053,5 +1061,249 @@ public abstract class BaseTestCell {
             assertEquals(FormulaError.NAME.getCode(), cell.getErrorCellValue());
             assertNull(cell.getHyperlink());
         }
+    }
+
+    @Test
+    public void test62216() throws IOException {
+        try (Workbook wb = _testDataProvider.createWorkbook()) {
+            Cell instance = wb.createSheet().createRow(0).createCell(0);
+            String formula = "2";
+            instance.setCellFormula(formula);
+            instance.setCellErrorValue(FormulaError.NAME.getCode());
+
+            assertEquals(formula, instance.getCellFormula());
+        }
+    }
+
+    @Test
+    public void testSetNullValues() throws IOException {
+        Workbook wb = _testDataProvider.createWorkbook();
+        Cell cell = wb.createSheet("test").createRow(0).createCell(0);
+
+        cell.setCellValue((Calendar)null);
+        assertEquals(CellType.BLANK, cell.getCellType());
+        assertEquals("", cell.getStringCellValue());
+
+        cell.setCellValue((Date)null);
+        assertEquals(CellType.BLANK, cell.getCellType());
+        assertEquals("", cell.getStringCellValue());
+
+        cell.setCellValue((String)null);
+        assertEquals(CellType.BLANK, cell.getCellType());
+        assertEquals("", cell.getStringCellValue());
+
+        assertEquals(CellType.BLANK, cell.getCellType());
+        assertEquals("", cell.getStringCellValue());
+
+        cell.setCellValue((RichTextString) null);
+        assertEquals(CellType.BLANK, cell.getCellType());
+        assertEquals("", cell.getStringCellValue());
+
+        cell.setCellValue((String)null);
+        assertEquals(CellType.BLANK, cell.getCellType());
+        assertEquals("", cell.getStringCellValue());
+
+        wb.close();
+    }
+
+    @Test
+    public void testFormulaSetValueDoesNotChangeType() throws IOException {
+        try (Workbook wb = _testDataProvider.createWorkbook()) {
+            Sheet sheet = wb.createSheet();
+            Row row = sheet.createRow(0);
+            Cell cell = row.createCell(0);
+            cell.setCellFormula("SQRT(-1)");
+
+            assertEquals(CellType.FORMULA, cell.getCellType());
+
+            cell.setCellValue(new Date());
+            assertEquals(CellType.FORMULA, cell.getCellType());
+
+            cell.setCellValue(GregorianCalendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.ROOT));
+            assertEquals(CellType.FORMULA, cell.getCellType());
+
+            cell.setCellValue(1.0);
+            assertEquals(CellType.FORMULA, cell.getCellType());
+
+            cell.setCellValue("test");
+            assertEquals(CellType.FORMULA, cell.getCellType());
+
+            cell.setCellValue(wb.getCreationHelper().createRichTextString("test"));
+            assertEquals(CellType.FORMULA, cell.getCellType());
+
+            cell.setCellValue(false);
+            assertEquals(CellType.FORMULA, cell.getCellType());
+        }
+    }
+
+    @Test
+    public void testGetNumericCellValueOnABlankCellReturnsZero() {
+        Cell cell = _testDataProvider.createWorkbook().createSheet().createRow(0).createCell(0);
+        assertEquals(CellType.BLANK, cell.getCellType());
+        assertEquals(0, cell.getNumericCellValue(), 0);
+    }
+
+    @Test
+    public void getDateCellValue_returnsNull_onABlankCell() {
+        Cell cell = _testDataProvider.createWorkbook().createSheet().createRow(0).createCell(0);
+        assertEquals(CellType.BLANK, cell.getCellType());
+        Date result = cell.getDateCellValue();
+        assertNull(result);
+    }
+
+    @Test
+    public void getBooleanCellValue_returnsFalse_onABlankCell() {
+        Cell cell = _testDataProvider.createWorkbook().createSheet().createRow(0).createCell(0);
+        assertEquals(CellType.BLANK, cell.getCellType());
+        boolean result = cell.getBooleanCellValue();
+        assertFalse(result);
+    }
+
+    @Test
+    public void setStringCellValue_ifThrows_shallNotChangeCell() {
+        Cell cell = _testDataProvider.createWorkbook().createSheet().createRow(0).createCell(0);
+
+        final double value = 2.78;
+        cell.setCellValue(value);
+        assertEquals(CellType.NUMERIC, cell.getCellType());
+
+        int badLength = cell.getSheet().getWorkbook().getSpreadsheetVersion().getMaxTextLength() + 1;
+        String badStringValue = new String(new byte[badLength], StandardCharsets.UTF_8);
+
+        try {
+            cell.setCellValue(badStringValue);
+        } catch (IllegalArgumentException e) {
+            // no-op, expected to throw but we need to assert something more
+        }
+
+        assertEquals(CellType.NUMERIC, cell.getCellType());
+        assertEquals(value, cell.getNumericCellValue(), 0);
+    }
+
+    @Test
+    public void setStringCellValueWithRichTextString_ifThrows_shallNotChangeCell() {
+        Cell cell = _testDataProvider.createWorkbook().createSheet().createRow(0).createCell(0);
+
+        final double value = 2.78;
+        cell.setCellValue(value);
+        assertEquals(CellType.NUMERIC, cell.getCellType());
+
+        int badLength = cell.getSheet().getWorkbook().getSpreadsheetVersion().getMaxTextLength() + 1;
+        RichTextString badStringValue = cell.getSheet().getWorkbook().getCreationHelper().
+                createRichTextString(new String(new byte[badLength], StandardCharsets.UTF_8));
+
+        try {
+            cell.setCellValue(badStringValue);
+        } catch (IllegalArgumentException e) {
+            // no-op, expected to throw but we need to assert something more
+        }
+
+        assertEquals(CellType.NUMERIC, cell.getCellType());
+        assertEquals(value, cell.getNumericCellValue(), 0);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void setCellType_null_throwsIAE() {
+        Cell cell = getInstance();
+        cell.setCellType(null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void setCellType_NONE_throwsIAE() {
+        Cell cell = getInstance();
+        cell.setCellType(CellType._NONE);
+    }
+
+
+    @Test
+    public void setCellType_BLANK_removesArrayFormula_ifCellIsPartOfAnArrayFormulaGroupContainingOnlyThisCell() {
+        Cell cell = getInstance();
+
+        cell.getSheet().setArrayFormula("1", CellRangeAddress.valueOf("A1"));
+        cell.setCellValue("foo");
+        assertTrue(cell.isPartOfArrayFormulaGroup());
+        assertEquals("1", cell.getCellFormula());
+
+        cell.setCellType(CellType.BLANK);
+
+        assertEquals(CellType.BLANK, cell.getCellType());
+        assertFalse(cell.isPartOfArrayFormulaGroup());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void setCellType_BLANK_throwsISE_ifCellIsPartOfAnArrayFormulaGroupContainingOtherCells() {
+        Cell cell = getInstance();
+        cell.getSheet().setArrayFormula("1", CellRangeAddress.valueOf("A1:B1"));
+        cell.setCellValue("foo");
+        cell.setCellType(CellType.BLANK);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void setCellFormula_throwsISE_ifCellIsPartOfAnArrayFormulaGroupContainingOtherCells() {
+        Cell cell = getInstance();
+
+        cell.getSheet().setArrayFormula("1", CellRangeAddress.valueOf("A1:B1"));
+        assertTrue(cell.isPartOfArrayFormulaGroup());
+        assertEquals(CellType.FORMULA, cell.getCellType());
+
+        cell.setCellFormula("1");
+    }
+
+    @Test
+    public void removeFormula_preservesValue() {
+        Cell cell = getInstance();
+
+        cell.setCellFormula("#DIV/0!");
+        cell.setCellValue(true);
+        cell.removeFormula();
+        assertEquals(CellType.BOOLEAN, cell.getCellType());
+        assertTrue(cell.getBooleanCellValue());
+
+        cell.setCellFormula("#DIV/0!");
+        cell.setCellValue(2);
+        cell.removeFormula();
+        assertEquals(CellType.NUMERIC, cell.getCellType());
+        assertEquals(2, cell.getNumericCellValue(), 0);
+
+        cell.setCellFormula("#DIV/0!");
+        cell.setCellValue("foo");
+        cell.removeFormula();
+        assertEquals(CellType.STRING, cell.getCellType());
+        assertEquals("foo", cell.getStringCellValue());
+
+        cell.setCellFormula("#DIV/0!");
+        cell.setCellErrorValue(FormulaError.NUM.getCode());
+        cell.removeFormula();
+        assertEquals(CellType.ERROR, cell.getCellType());
+        assertEquals(FormulaError.NUM.getCode(), cell.getErrorCellValue());
+    }
+
+    @Test
+    public void removeFormula_turnsCellToBlank_whenFormulaWasASingleCellArrayFormula() {
+        Cell cell = getInstance();
+
+        cell.getSheet().setArrayFormula("#DIV/0!", CellRangeAddress.valueOf("A1"));
+        cell.setCellValue(true);
+        cell.removeFormula();
+        assertEquals(CellType.BLANK, cell.getCellType());
+
+        cell.getSheet().setArrayFormula("#DIV/0!", CellRangeAddress.valueOf("A1"));
+        cell.setCellValue(2);
+        cell.removeFormula();
+        assertEquals(CellType.BLANK, cell.getCellType());
+
+        cell.getSheet().setArrayFormula("#DIV/0!", CellRangeAddress.valueOf("A1"));
+        cell.setCellValue(true);
+        cell.removeFormula();
+        assertEquals(CellType.BLANK, cell.getCellType());
+
+        cell.getSheet().setArrayFormula("#DIV/0!", CellRangeAddress.valueOf("A1"));
+        cell.setCellErrorValue(FormulaError.NUM.getCode());
+        cell.removeFormula();
+        assertEquals(CellType.BLANK, cell.getCellType());
+    }
+
+    private Cell getInstance() {
+        return _testDataProvider.createWorkbook().createSheet().createRow(0).createCell(0);
     }
 }

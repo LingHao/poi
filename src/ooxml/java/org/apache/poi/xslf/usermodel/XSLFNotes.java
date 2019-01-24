@@ -16,13 +16,13 @@
 ==================================================================== */
 package org.apache.poi.xslf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.sl.usermodel.Notes;
 import org.apache.poi.util.Beta;
@@ -49,9 +49,7 @@ implements Notes<XSLFShape,XSLFTextParagraph> {
      *
      * @param part the package part holding the notes data,
      * the content type must be <code>application/vnd.openxmlformats-officedocument.notes+xml</code>
-     * @param rel  the package relationship holding this notes,
-     * the relationship type must be http://schemas.openxmlformats.org/officeDocument/2006/relationships/notes
-     * 
+     *
      * @since POI 3.14-Beta1
      */
     XSLFNotes(PackagePart part) throws IOException, XmlException {
@@ -77,12 +75,13 @@ implements Notes<XSLFShape,XSLFTextParagraph> {
 
     @Override
     protected String getRootElementName(){
-        return "notes";        
+        return "notes";
     }
 
     @Override
     public XSLFTheme getTheme(){
-    	return getMasterSheet().getTheme();
+        final XSLFNotesMaster m = getMasterSheet();
+    	return (m != null) ? m.getTheme() : null;
     }
 
     @Override

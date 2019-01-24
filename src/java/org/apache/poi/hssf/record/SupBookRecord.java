@@ -130,12 +130,12 @@ public final class SupBookRecord extends StandardRecord {
      }
 
     public String toString() {
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         sb.append("[SUPBOOK ");
 
         if(isExternalReferences()) {
             sb.append("External References]\n");
-            sb.append(" .url     = ").append(field_2_encoded_url).append("\n");
+            sb.append(" .url     = ").append(getURL()).append("\n");
             sb.append(" .nSheets = ").append(field_1_number_of_sheets).append("\n");
             for (String sheetname : field_3_sheet_names) {
                 sb.append("    .name = ").append(sheetname).append("\n");
@@ -158,8 +158,8 @@ public final class SupBookRecord extends StandardRecord {
 
         sum += StringUtil.getEncodedSize(field_2_encoded_url);
 
-        for(int i=0; i<field_3_sheet_names.length; i++) {
-            sum += StringUtil.getEncodedSize(field_3_sheet_names[i]);
+        for (String field_3_sheet_name : field_3_sheet_names) {
+            sum += StringUtil.getEncodedSize(field_3_sheet_name);
         }
         return sum;
     }
@@ -170,8 +170,8 @@ public final class SupBookRecord extends StandardRecord {
         if(isExternalReferences()) {
             StringUtil.writeUnicodeString(out, field_2_encoded_url);
 
-            for(int i=0; i<field_3_sheet_names.length; i++) {
-                StringUtil.writeUnicodeString(out, field_3_sheet_names[i]);
+            for (String field_3_sheet_name : field_3_sheet_names) {
+                StringUtil.writeUnicodeString(out, field_3_sheet_name);
             }
         } else {
             int field2val = _isAddInFunctions ? TAG_ADD_IN_FUNCTIONS : TAG_INTERNAL_REFERENCES;

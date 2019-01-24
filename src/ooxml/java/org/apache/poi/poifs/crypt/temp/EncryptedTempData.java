@@ -48,6 +48,7 @@ public class EncryptedTempData {
     private static POILogger LOG = POILogFactory.getLogger(EncryptedTempData.class);
  
     private final static CipherAlgorithm cipherAlgorithm = CipherAlgorithm.aes128;
+    private final static String PADDING = "PKCS5Padding";
     private final SecretKeySpec skeySpec;
     private final byte[] ivBytes;
     private final File tempFile;
@@ -62,16 +63,32 @@ public class EncryptedTempData {
         tempFile = TempFile.createTempFile("poi-temp-data", ".tmp");
     }
 
+    /**
+     * Returns the output stream for writing the data.<p>
+     * Make sure to close it, otherwise the last cipher block is not written completely.
+     *
+     * @return the outputstream
+     * @throws IOException if the writing to the underlying file fails
+     */
     public OutputStream getOutputStream() throws IOException {
-        Cipher ciEnc = CryptoFunctions.getCipher(skeySpec, cipherAlgorithm, ChainingMode.cbc, ivBytes, Cipher.ENCRYPT_MODE, null);
+        Cipher ciEnc = CryptoFunctions.getCipher(skeySpec, cipherAlgorithm, ChainingMode.cbc, ivBytes, Cipher.ENCRYPT_MODE, PADDING);
         return new CipherOutputStream(new FileOutputStream(tempFile), ciEnc);
     }
 
+    /**
+     * Returns the input stream for reading the previously written encrypted data
+     *
+     * @return the inputstream
+     * @throws IOException if the reading of the underlying file fails
+     */
     public InputStream getInputStream() throws IOException {
-        Cipher ciDec = CryptoFunctions.getCipher(skeySpec, cipherAlgorithm, ChainingMode.cbc, ivBytes, Cipher.DECRYPT_MODE, null);
+        Cipher ciDec = CryptoFunctions.getCipher(skeySpec, cipherAlgorithm, ChainingMode.cbc, ivBytes, Cipher.DECRYPT_MODE, PADDING);
         return new CipherInputStream(new FileInputStream(tempFile), ciDec);
     }
-    
+
+    /**
+     * Removes the temporarily backing file
+     */
     public void dispose() {
         if (!tempFile.delete()) {
             LOG.log(POILogger.WARN, tempFile.getAbsolutePath()+" can't be removed (or was already removed.");

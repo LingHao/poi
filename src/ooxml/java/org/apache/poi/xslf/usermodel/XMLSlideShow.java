@@ -16,7 +16,7 @@
 ==================================================================== */
 package org.apache.poi.xslf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.awt.Dimension;
 import java.io.File;
@@ -30,18 +30,20 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
-import org.apache.poi.POIXMLDocument;
-import org.apache.poi.POIXMLDocumentPart;
-import org.apache.poi.POIXMLException;
-import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
+import org.apache.poi.ooxml.POIXMLDocument;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLException;
+import org.apache.poi.ooxml.extractor.POIXMLPropertiesTextExtractor;
+import org.apache.poi.ooxml.util.PackageHelper;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
-import org.apache.poi.openxml4j.opc.PackageRelationship;
 import org.apache.poi.sl.usermodel.MasterSheet;
 import org.apache.poi.sl.usermodel.PictureData.PictureType;
-import org.apache.poi.sl.usermodel.Resources;
 import org.apache.poi.sl.usermodel.SlideShow;
 import org.apache.poi.util.Beta;
 import org.apache.poi.util.IOUtils;
@@ -50,7 +52,6 @@ import org.apache.poi.util.LittleEndian;
 import org.apache.poi.util.LittleEndianConsts;
 import org.apache.poi.util.POILogFactory;
 import org.apache.poi.util.POILogger;
-import org.apache.poi.util.PackageHelper;
 import org.apache.poi.util.Units;
 import org.apache.xmlbeans.XmlException;
 import org.apache.xmlbeans.XmlObject;
@@ -60,7 +61,6 @@ import org.openxmlformats.schemas.presentationml.x2006.main.CTNotesMasterIdListE
 import org.openxmlformats.schemas.presentationml.x2006.main.CTPresentation;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideIdList;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideIdListEntry;
-import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideMasterIdListEntry;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideSize;
 import org.openxmlformats.schemas.presentationml.x2006.main.PresentationDocument;
 
@@ -70,6 +70,7 @@ import org.openxmlformats.schemas.presentationml.x2006.main.PresentationDocument
  * they are reading or writing a slideshow. It is also the
  * top level object for creating new slides/etc.
  */
+@SuppressWarnings("WeakerAccess")
 @Beta
 public class XMLSlideShow extends POIXMLDocument
         implements SlideShow<XSLFShape, XSLFTextParagraph> {
@@ -78,10 +79,10 @@ public class XMLSlideShow extends POIXMLDocument
     private static final int MAX_RECORD_LENGTH = 1_000_000;
 
     private CTPresentation _presentation;
-    private List<XSLFSlide> _slides;
-    private List<XSLFSlideMaster> _masters;
-    private List<XSLFPictureData> _pictures;
-    private List<XSLFChart> _charts;
+    private final List<XSLFSlide> _slides = new ArrayList<>();
+    private final List<XSLFSlideMaster> _masters = new ArrayList<>();
+    private final List<XSLFPictureData> _pictures = new ArrayList<>();
+    private final List<XSLFChart> _charts = new ArrayList<>();
     private XSLFTableStyles _tableStyles;
     private XSLFNotesMaster _notesMaster;
     private XSLFCommentAuthors _commentAuthors;
@@ -153,27 +154,26 @@ public class XMLSlideShow extends POIXMLDocument
                 }
             }
 
-            _charts = new ArrayList<>(chartMap.size());
-            for (XSLFChart chart : chartMap.values()) {
-                _charts.add(chart);
+            _charts.clear();
+            _charts.addAll(chartMap.values());
+
+            _masters.clear();
+            if (_presentation.isSetSldMasterIdLst()) {
+                _presentation.getSldMasterIdLst().getSldMasterIdList().forEach(
+                   id -> _masters.add(masterMap.get(id.getId2()))
+                );
             }
 
-            _masters = new ArrayList<>(masterMap.size());
-            for (CTSlideMasterIdListEntry masterId : _presentation.getSldMasterIdLst().getSldMasterIdList()) {
-                XSLFSlideMaster master = masterMap.get(masterId.getId2());
-                _masters.add(master);
-            }
-
-            _slides = new ArrayList<>(shIdMap.size());
+            _slides.clear();
             if (_presentation.isSetSldIdLst()) {
-                for (CTSlideIdListEntry slId : _presentation.getSldIdLst().getSldIdList()) {
-                    XSLFSlide sh = shIdMap.get(slId.getId2());
+                _presentation.getSldIdLst().getSldIdList().forEach(id -> {
+                    XSLFSlide sh = shIdMap.get(id.getId2());
                     if (sh == null) {
-                        LOG.log(POILogger.WARN, "Slide with r:id " + slId.getId() + " was defined, but didn't exist in package, skipping");
-                        continue;
+                        LOG.log(POILogger.WARN, "Slide with r:id " + id.getId() + " was defined, but didn't exist in package, skipping");
+                    } else {
+                        _slides.add(sh);
                     }
-                    _slides.add(sh);
-                }
+                });
             }
         } catch (XmlException e) {
             throw new POIXMLException(e);
@@ -192,7 +192,7 @@ public class XMLSlideShow extends POIXMLDocument
      * Get the document's embedded files.
      */
     @Override
-    public List<PackagePart> getAllEmbedds() throws OpenXML4JException {
+    public List<PackagePart> getAllEmbeddedParts() {
         return Collections.unmodifiableList(
                 getPackage().getPartsByName(Pattern.compile("/ppt/embeddings/.*?"))
         );
@@ -200,14 +200,12 @@ public class XMLSlideShow extends POIXMLDocument
 
     @Override
     public List<XSLFPictureData> getPictureData() {
-        if (_pictures == null) {
-            List<PackagePart> mediaParts = getPackage().getPartsByName(Pattern.compile("/ppt/media/.*?"));
-            _pictures = new ArrayList<>(mediaParts.size());
-            for (PackagePart part : mediaParts) {
+        if (_pictures.isEmpty()) {
+            getPackage().getPartsByName(Pattern.compile("/ppt/media/.*?")).forEach(part -> {
                 XSLFPictureData pd = new XSLFPictureData(part);
                 pd.setIndex(_pictures.size());
                 _pictures.add(pd);
-            }
+            });
         }
         return Collections.unmodifiableList(_pictures);
     }
@@ -219,20 +217,16 @@ public class XMLSlideShow extends POIXMLDocument
      * @return created slide
      */
     public XSLFSlide createSlide(XSLFSlideLayout layout) {
-        int slideNumber = 256, cnt = 1;
-        CTSlideIdList slideList;
-        XSLFRelation relationType = XSLFRelation.SLIDE;
-        if (!_presentation.isSetSldIdLst()) {
-            slideList = _presentation.addNewSldIdLst();
-        } else {
-            slideList = _presentation.getSldIdLst();
-            for (CTSlideIdListEntry slideId : slideList.getSldIdArray()) {
-                slideNumber = (int) Math.max(slideId.getId() + 1, slideNumber);
-                cnt++;
-            }
+        CTSlideIdList slideList = _presentation.isSetSldIdLst()
+            ? _presentation.getSldIdLst() : _presentation.addNewSldIdLst();
 
-            cnt = findNextAvailableFileNameIndex(relationType, cnt);
-        }
+        @SuppressWarnings("deprecation")
+        OptionalLong maxId = Stream.of(slideList.getSldIdArray())
+            .mapToLong(CTSlideIdListEntry::getId).max();
+
+        final XSLFRelation relationType = XSLFRelation.SLIDE;
+        final int slideNumber = (int)(Math.max(maxId.orElse(0),255)+1);
+        final int cnt = findNextAvailableFileNameIndex(relationType);
 
         RelationPart rp = createRelationship
                 (relationType, XSLFFactory.getInstance(), cnt, false);
@@ -250,33 +244,14 @@ public class XMLSlideShow extends POIXMLDocument
         return slide;
     }
 
-    private int findNextAvailableFileNameIndex(XSLFRelation relationType, int idx) {
+    private int findNextAvailableFileNameIndex(XSLFRelation relationType) {
         // Bug 55791: We also need to check that the resulting file name is not already taken
         // this can happen when removing/adding slides, notes or charts
-        while (true) {
-            String fileName = relationType.getFileName(idx);
-            boolean found = false;
-            for (POIXMLDocumentPart relation : getRelations()) {
-                if (relation.getPackagePart() != null &&
-                        fileName.equals(relation.getPackagePart().getPartName().getName())) {
-                    // name is taken => try next one
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found &&
-                    getPackage().getPartsByName(Pattern.compile(Pattern.quote(fileName))).size() > 0) {
-                // name is taken => try next one
-                found = true;
-            }
-
-            if (!found) {
-                break;
-            }
-            idx++;
+        try {
+            return getPackage().getUnusedPartIndex(relationType.getDefaultFileName());
+        } catch (InvalidFormatException e) {
+            throw new RuntimeException(e);
         }
-        return idx;
     }
 
     /**
@@ -288,7 +263,7 @@ public class XMLSlideShow extends POIXMLDocument
         XSLFSlideLayout layout = sm.getLayout(SlideLayout.BLANK);
         if (layout == null) {
             LOG.log(POILogger.WARN, "Blank layout was not found - defaulting to first slide layout in master");
-            XSLFSlideLayout sl[] = sm.getSlideLayouts();
+            XSLFSlideLayout[] sl = sm.getSlideLayouts();
             if (sl.length == 0) {
                 throw new POIXMLException("SlideMaster must contain a SlideLayout.");
             }
@@ -302,14 +277,23 @@ public class XMLSlideShow extends POIXMLDocument
      * Create a blank chart on the given slide.
      */
     public XSLFChart createChart(XSLFSlide slide) {
-        int chartIdx = findNextAvailableFileNameIndex(XSLFRelation.CHART, _charts.size() + 1);
-        XSLFChart chart = (XSLFChart) createRelationship(XSLFRelation.CHART, XSLFFactory.getInstance(), chartIdx, true).getDocumentPart();
+        XSLFChart chart = createChart();
         slide.addRelation(null, XSLFRelation.CHART, chart);
+        return chart;
+    }
+    
+    /**
+     * This method is used to create template for chart XML.
+     * @return Xslf chart object 
+     * @since POI 4.1.0
+     */
+    public XSLFChart createChart() {
+        int chartIdx = findNextAvailableFileNameIndex(XSLFRelation.CHART);
+        XSLFChart chart = createRelationship(XSLFRelation.CHART, XSLFFactory.getInstance(), chartIdx, true).getDocumentPart();
         chart.setChartIndex(chartIdx);
         _charts.add(chart);
         return chart;
     }
-
     /**
      * Return notes slide for the specified slide or create new if it does not exist yet.
      */
@@ -332,10 +316,8 @@ public class XMLSlideShow extends POIXMLDocument
             createNotesMaster();
         }
 
-        int slideIndex = XSLFRelation.SLIDE.getFileNameIndex(slide);
-
         XSLFRelation relationType = XSLFRelation.NOTES;
-        slideIndex = findNextAvailableFileNameIndex(relationType, slideIndex);
+        int slideIndex = findNextAvailableFileNameIndex(relationType);
 
         // add notes slide to presentation
         XSLFNotes notesSlide = (XSLFNotes) createRelationship
@@ -362,7 +344,7 @@ public class XMLSlideShow extends POIXMLDocument
         CTNotesMasterIdListEntry notesMasterId = notesMasterIdList.addNewNotesMasterId();
         notesMasterId.setId(rp.getRelationship().getId());
 
-        Integer themeIndex = 1;
+        int themeIndex = 1;
         // TODO: check if that list can be replaced by idx = Math.max(idx,themeIdx)
         List<Integer> themeIndexList = new ArrayList<>();
         for (POIXMLDocumentPart p : getRelations()) {
@@ -372,8 +354,8 @@ public class XMLSlideShow extends POIXMLDocument
         }
 
         if (!themeIndexList.isEmpty()) {
-            Boolean found = false;
-            for (Integer i = 1; i <= themeIndexList.size(); i++) {
+            boolean found = false;
+            for (int i = 1; i <= themeIndexList.size(); i++) {
                 if (!themeIndexList.contains(i)) {
                     found = true;
                     themeIndex = i;
@@ -416,7 +398,7 @@ public class XMLSlideShow extends POIXMLDocument
      * Return all the charts in the slideshow
      */
     public List<XSLFChart> getCharts() {
-        return _charts;
+        return Collections.unmodifiableList(_charts);
     }
 
     /**
@@ -444,6 +426,7 @@ public class XMLSlideShow extends POIXMLDocument
 
         // fix ordering in the low-level xml
         CTSlideIdList sldIdLst = _presentation.getSldIdLst();
+        @SuppressWarnings("deprecation")
         CTSlideIdListEntry[] entries = sldIdLst.getSldIdArray();
         CTSlideIdListEntry oldEntry = entries[oldIndex];
         if (oldIndex < newIndex) {
@@ -508,14 +491,21 @@ public class XMLSlideShow extends POIXMLDocument
             return img;
         }
 
-        int imageNumber = _pictures.size();
+
         XSLFRelation relType = XSLFPictureData.getRelationForType(format);
         if (relType == null) {
             throw new IllegalArgumentException("Picture type " + format + " is not supported.");
         }
 
-        img = createRelationship(relType, XSLFFactory.getInstance(), imageNumber + 1, true).getDocumentPart();
-        img.setIndex(imageNumber);
+        int imageNumber;
+        try {
+            imageNumber = getPackage().getUnusedPartIndex("/ppt/media/image#\\..+");
+        } catch (InvalidFormatException e) {
+            imageNumber = _pictures.size() + 1;
+        }
+
+        img = createRelationship(relType, XSLFFactory.getInstance(), imageNumber, true).getDocumentPart();
+        img.setIndex(_pictures.size());
         _pictures.add(img);
 
         try (OutputStream out = img.getPackagePart().getOutputStream()) {
@@ -571,7 +561,7 @@ public class XMLSlideShow extends POIXMLDocument
     @Override
     public XSLFPictureData findPictureData(byte[] pictureData) {
         long checksum = IOUtils.calculateChecksum(pictureData);
-        byte cs[] = new byte[LittleEndianConsts.LONG_SIZE];
+        byte[] cs = new byte[LittleEndianConsts.LONG_SIZE];
         LittleEndian.putLong(cs, 0, checksum);
 
         for (XSLFPictureData pic : getPictureData()) {
@@ -615,6 +605,7 @@ public class XMLSlideShow extends POIXMLDocument
         return null;
     }
 
+    @SuppressWarnings("RedundantThrows")
     @Override
     public MasterSheet<XSLFShape, XSLFTextParagraph> createMasterSheet() throws IOException {
         // TODO: implement!
@@ -622,8 +613,22 @@ public class XMLSlideShow extends POIXMLDocument
     }
 
     @Override
-    public Resources getResources() {
-        // TODO: implement!
-        throw new UnsupportedOperationException();
+    public POIXMLPropertiesTextExtractor getMetadataTextExtractor() {
+        return new POIXMLPropertiesTextExtractor(this);
+    }
+
+    @Override
+    public Object getPersistDocument() {
+        return this;
+    }
+
+    @Override
+    public XSLFFontInfo addFont(InputStream fontStream) throws IOException {
+        return XSLFFontInfo.addFontToSlideShow(this, fontStream);
+    }
+
+    @Override
+    public List<XSLFFontInfo> getFonts() {
+        return XSLFFontInfo.getFonts(this);
     }
 }

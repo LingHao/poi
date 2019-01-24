@@ -22,6 +22,8 @@ import static org.apache.poi.poifs.common.POIFSConstants.RAW_XML_FILE_HEADER;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -76,7 +78,7 @@ public enum FileMagic {
     /** PDF document */
     PDF("%PDF"),
     /** Some different HTML documents */
-    HTML("<!DOCTYP".getBytes(UTF_8), "<html".getBytes(UTF_8)),
+    HTML("<!DOCTYP".getBytes(UTF_8), "<html".getBytes(UTF_8), "<HTML".getBytes(UTF_8)),
     WORD2(new byte[]{ (byte)0xdb, (byte)0xa5, 0x2d, 0x00}),
     // keep UNKNOWN always as last enum!
     /** UNKNOWN magic */
@@ -99,23 +101,42 @@ public enum FileMagic {
 
     public static FileMagic valueOf(byte[] magic) {
         for (FileMagic fm : values()) {
-            int i=0;
-            boolean found = true;
             for (byte[] ma : fm.magic) {
-                for (byte m : ma) {
-                    byte d = magic[i++];
-                    if (!(d == m || (m == 0x70 && (d == 0x10 || d == 0x20 || d == 0x40)))) {
-                        found = false;
-                        break;
-                    }
-                }
-                if (found) {
+                if (findMagic(ma, magic)) {
                     return fm;
                 }
             }
         }
         return UNKNOWN;
     }
+
+    private static boolean findMagic(byte[] cmp, byte[] actual) {
+        int i=0;
+        for (byte m : cmp) {
+            byte d = actual[i++];
+            if (!(d == m || (m == 0x70 && (d == 0x10 || d == 0x20 || d == 0x40)))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    /**
+     * Get the file magic of the supplied {@link File}<p>
+     *
+     * Even if this method returns {@link FileMagic#UNKNOWN} it could potentially mean,
+     *  that the ZIP stream has leading junk bytes
+     *
+     * @param inp a file to be identified
+     */
+    public static FileMagic valueOf(final File inp) throws IOException {
+        try (FileInputStream fis = new FileInputStream(inp)) {
+            final byte[] data = IOUtils.toByteArray(fis, 8);
+            return FileMagic.valueOf(data);
+        }
+    }
+
 
     /**
      * Get the file magic of the supplied InputStream (which MUST

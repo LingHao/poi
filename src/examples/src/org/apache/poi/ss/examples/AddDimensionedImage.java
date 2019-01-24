@@ -202,13 +202,13 @@ import org.apache.poi.util.IOUtils;
 public class AddDimensionedImage {
 
     // Four constants that determine how - and indeed whether - the rows
-    // and columns an image may overlie should be expanded to accomodate that
+    // and columns an image may overlie should be expanded to accommodate that
     // image.
     // Passing EXPAND_ROW will result in the height of a row being increased
-    // to accomodate the image if it is not already larger. The image will
+    // to accommodate the image if it is not already larger. The image will
     // be layed across one or more columns.
     // Passing EXPAND_COLUMN will result in the width of the column being
-    // increased to accomodate the image if it is not already larger. The image
+    // increased to accommodate the image if it is not already larger. The image
     // will be layed across one or many rows.
     // Passing EXPAND_ROW_AND_COLUMN will result in the height of the row
     // bing increased along with the width of the column to accomdate the
@@ -348,7 +348,7 @@ public class AddDimensionedImage {
         }
 
         // Call methods to calculate how the image and sheet should be
-        // manipulated to accomodate the image; columns and then rows.
+        // manipulated to accommodate the image; columns and then rows.
         colClientAnchorDetail = this.fitImageToColumns(sheet, colNumber,
                 reqImageWidthMM, resizeBehaviour);
         rowClientAnchorDetail = this.fitImageToRows(sheet, rowNumber,
@@ -365,12 +365,16 @@ public class AddDimensionedImage {
 
         anchor.setDx1(0);
         anchor.setDy1(0);
-        anchor.setDx2(colClientAnchorDetail.getInset());
-        anchor.setDy2(rowClientAnchorDetail.getInset());
-        anchor.setCol1(colClientAnchorDetail.getFromIndex());
-        anchor.setRow1(rowClientAnchorDetail.getFromIndex());
-        anchor.setCol2(colClientAnchorDetail.getToIndex());
-        anchor.setRow2(rowClientAnchorDetail.getToIndex());
+        if (colClientAnchorDetail != null) {
+            anchor.setDx2(colClientAnchorDetail.getInset());
+            anchor.setCol1(colClientAnchorDetail.getFromIndex());
+            anchor.setCol2(colClientAnchorDetail.getToIndex());
+        }
+        if (rowClientAnchorDetail != null) {
+            anchor.setDy2(rowClientAnchorDetail.getInset());
+            anchor.setRow1(rowClientAnchorDetail.getFromIndex());
+            anchor.setRow2(rowClientAnchorDetail.getToIndex());
+        }
 
         // For now, set the anchor type to do not move or resize the
         // image as the size of the row/column is adjusted. This could easily
@@ -436,7 +440,7 @@ public class AddDimensionedImage {
         colWidthMM = ConvertImageUnits.widthUnits2Millimetres(
                 (short)sheet.getColumnWidth(colNumber));
 
-        // Check that the column's width will accomodate the image at the
+        // Check that the column's width will accommodate the image at the
         // required dimension. If the width of the column is LESS than the
         // required width of the image, decide how the application should
         // respond - resize the column or overlay the image across one or more
@@ -496,7 +500,7 @@ public class AddDimensionedImage {
     }
 
     /**
-     * Determines whether the sheets row should be re-sized to accomodate
+     * Determines whether the sheets row should be re-sized to accommodate
      * the image, adjusts the rows height if necessary and creates then
      * returns a ClientAnchorDetail object that facilitates construction of
      * a ClientAnchor that will fix the image on the sheet and establish
@@ -538,7 +542,7 @@ public class AddDimensionedImage {
         // Get the row's height in millimetres
         rowHeightMM = row.getHeightInPoints() / ConvertImageUnits.POINTS_PER_MILLIMETRE;
 
-        // Check that the row's height will accomodate the image at the required
+        // Check that the row's height will accommodate the image at the required
         // dimensions. If the height of the row is LESS than the required height
         // of the image, decide how the application should respond - resize the
         // row or overlay the image across a series of rows.
@@ -813,27 +817,22 @@ public class AddDimensionedImage {
      * @param args the command line arguments
      */
     public static void main(String[] args) throws IOException {
-    	String imageFile;
-    	String outputFile;
-        FileOutputStream fos;
-        Workbook workbook;
-        Sheet sheet;
-
         if(args.length < 2){
     		System.err.println("Usage: AddDimensionedImage imageFile outputFile");
     		return;
     	}
-    	workbook = new HSSFWorkbook();   // OR XSSFWorkbook
-    	sheet = workbook.createSheet("Picture Test");
-       	imageFile = args[0];
-    	outputFile = args[1];
-    	new AddDimensionedImage().addImageToSheet("B5", sheet, sheet.createDrawingPatriarch(),
-    		new File(imageFile).toURI().toURL(), 100, 40,
-    		AddDimensionedImage.EXPAND_ROW_AND_COLUMN);
-  		fos = new FileOutputStream(outputFile);
-        workbook.write(fos);
-        fos.close();
-        workbook.close();
+
+        final String imageFile = args[0];
+        final String outputFile = args[1];
+
+        try (final Workbook workbook = new HSSFWorkbook();
+             final FileOutputStream fos = new FileOutputStream(outputFile)) {   // OR XSSFWorkbook
+            Sheet sheet = workbook.createSheet("Picture Test");
+            new AddDimensionedImage().addImageToSheet("B5", sheet, sheet.createDrawingPatriarch(),
+                    new File(imageFile).toURI().toURL(), 100, 40,
+                    AddDimensionedImage.EXPAND_ROW_AND_COLUMN);
+            workbook.write(fos);
+        }
     }
 
     /**

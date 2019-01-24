@@ -16,13 +16,12 @@
 ==================================================================== */
 package org.apache.poi.xslf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.poi.POIXMLDocumentPart;
-import org.apache.poi.POIXMLException;
+import org.apache.poi.ooxml.POIXMLException;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.sl.usermodel.MasterSheet;
 import org.apache.poi.util.Beta;
@@ -51,7 +50,6 @@ import org.openxmlformats.schemas.presentationml.x2006.main.NotesMasterDocument;
  public class XSLFNotesMaster extends XSLFSheet
      implements MasterSheet<XSLFShape,XSLFTextParagraph> {
 	 private CTNotesMaster _slide;
-     private XSLFTheme _theme;
 
     XSLFNotesMaster() {
         super();
@@ -100,21 +98,15 @@ import org.openxmlformats.schemas.presentationml.x2006.main.NotesMasterDocument;
     public MasterSheet<XSLFShape,XSLFTextParagraph> getMasterSheet() {
         return null;
     }
-    
+
+
     @Override
-    public XSLFTheme getTheme() {
-        if (_theme == null) {
-            for (POIXMLDocumentPart p : getRelations()) {
-                if (p instanceof XSLFTheme) {
-                    _theme = (XSLFTheme) p;
-                    CTColorMapping cmap = _slide.getClrMap();
-                    if (cmap != null) {
-                        _theme.initColorMap(cmap);
-                    }
-                    break;
-                }
-            }
-        }
-        return _theme;
-    }    
+    boolean isSupportTheme() {
+        return true;
+    }
+
+    @Override
+    CTColorMapping getColorMapping() {
+        return _slide.getClrMap();
+    }
 }

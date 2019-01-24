@@ -99,6 +99,13 @@ public abstract class ChunkedCipherOutputStream extends FilterOutputStream {
         return initCipherForBlock(cipher, block, lastChunk);
     }
 
+    // helper method to break a recursion loop introduced because of an IBMJCE bug, i.e. not resetting on Cipher.doFinal()
+    @Internal
+    protected Cipher initCipherForBlockNoFlush(Cipher existing, int block, boolean lastChunk)
+    throws IOException, GeneralSecurityException {
+        return initCipherForBlock(cipher, block, lastChunk);
+    }
+
     protected abstract Cipher initCipherForBlock(Cipher existing, int block, boolean lastChunk)
     throws IOException, GeneralSecurityException;
 
@@ -212,15 +219,36 @@ public abstract class ChunkedCipherOutputStream extends FilterOutputStream {
      * @throws IllegalBlockSizeException 
      * @throws ShortBufferException
      */
-    protected int invokeCipher(int posInChunk, boolean doFinal) throws GeneralSecurityException {
-        byte plain[] = (plainByteFlags.isEmpty()) ? null : chunk.clone();
+    protected int invokeCipher(int posInChunk, boolean doFinal) throws GeneralSecurityException, IOException {
+        byte[] plain = (plainByteFlags.isEmpty()) ? null : chunk.clone();
 
         int ciLen = (doFinal)
             ? cipher.doFinal(chunk, 0, posInChunk, chunk)
             : cipher.update(chunk, 0, posInChunk, chunk);
-        
-        for (int i = plainByteFlags.nextSetBit(0); i >= 0 && i < posInChunk; i = plainByteFlags.nextSetBit(i+1)) {
-            chunk[i] = plain[i];
+
+        if (doFinal && "IBMJCE".equals(cipher.getProvider().getName()) && "RC4".equals(cipher.getAlgorithm())) {
+            // workaround for IBMs cipher not resetting on doFinal
+
+            int index = (int)(pos >> chunkBits);
+            boolean lastChunk;
+            if (posInChunk==0) {
+                index--;
+                posInChunk = chunk.length;
+                lastChunk = false;
+            } else {
+                // pad the last chunk
+                lastChunk = true;
+            }
+
+            cipher = initCipherForBlockNoFlush(cipher, index, lastChunk);
+        }
+
+        if (plain != null) {
+            int i = plainByteFlags.nextSetBit(0);
+            while (i >= 0 && i < posInChunk) {
+                chunk[i] = plain[i];
+                i = plainByteFlags.nextSetBit(i+1);
+            }
         }
         
         return ciLen;
@@ -281,24 +309,19 @@ public abstract class ChunkedCipherOutputStream extends FilterOutputStream {
         @Override
         public void processPOIFSWriterEvent(POIFSWriterEvent event) {
             try {
-                OutputStream os = event.getStream();
+                try (OutputStream os = event.getStream();
+                     FileInputStream fis = new FileInputStream(fileOut)) {
 
-                // StreamSize (8 bytes): An unsigned integer that specifies the number of bytes used by data
-                // encrypted within the EncryptedData field, not including the size of the StreamSize field.
-                // Note that the actual size of the \EncryptedPackage stream (1) can be larger than this
-                // value, depending on the block size of the chosen encryption algorithm
-                byte buf[] = new byte[LittleEndianConsts.LONG_SIZE];
-                LittleEndian.putLong(buf, 0, pos);
-                os.write(buf);
+                    // StreamSize (8 bytes): An unsigned integer that specifies the number of bytes used by data
+                    // encrypted within the EncryptedData field, not including the size of the StreamSize field.
+                    // Note that the actual size of the \EncryptedPackage stream (1) can be larger than this
+                    // value, depending on the block size of the chosen encryption algorithm
+                    byte[] buf = new byte[LittleEndianConsts.LONG_SIZE];
+                    LittleEndian.putLong(buf, 0, pos);
+                    os.write(buf);
 
-                FileInputStream fis = new FileInputStream(fileOut);
-                try {
                     IOUtils.copy(fis, os);
-                } finally {
-                    fis.close();
                 }
-
-                os.close();
 
                 if (!fileOut.delete()) {
                     LOG.log(POILogger.ERROR, "Can't delete temporary encryption file: "+fileOut);

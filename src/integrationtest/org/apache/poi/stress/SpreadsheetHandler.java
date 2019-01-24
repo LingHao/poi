@@ -22,10 +22,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.extractor.EmbeddedData;
 import org.apache.poi.ss.extractor.EmbeddedExtractor;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -48,12 +48,8 @@ public abstract class SpreadsheetHandler extends AbstractFileHandler {
 		ByteArrayOutputStream out = writeToArray(wb);
 
 		// read in the written file
-		Workbook read;
-		try {
-			read = WorkbookFactory.create(new ByteArrayInputStream(out.toByteArray()));
-		} catch (InvalidFormatException e) {
-			throw new IllegalStateException(e);
-		}
+		Workbook read = WorkbookFactory.create(new ByteArrayInputStream(out.toByteArray()));
+
 		assertNotNull(read);
 		
 		readContent(read);
@@ -94,6 +90,13 @@ public abstract class SpreadsheetHandler extends AbstractFileHandler {
 			        assertNotNull(cell.toString());
 			    }
 			}
+		}
+
+		for (Name name : wb.getAllNames()) {
+			// this sometimes caused exceptions
+            if(!name.isFunctionName()) {
+                name.getRefersToFormula();
+            }
 		}
 	}
 

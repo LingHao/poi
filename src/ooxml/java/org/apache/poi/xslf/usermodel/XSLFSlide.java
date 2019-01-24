@@ -16,12 +16,14 @@
 ==================================================================== */
 package org.apache.poi.xslf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.awt.Graphics2D;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.sl.draw.DrawFactory;
 import org.apache.poi.sl.draw.Drawable;
@@ -29,7 +31,7 @@ import org.apache.poi.sl.usermodel.Notes;
 import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.sl.usermodel.Slide;
 import org.apache.poi.util.Beta;
-import org.apache.poi.util.DocumentHelper;
+import org.apache.poi.ooxml.util.DocumentHelper;
 import org.apache.poi.util.NotImplemented;
 import org.apache.xmlbeans.XmlException;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTGroupShapeProperties;
@@ -38,6 +40,7 @@ import org.openxmlformats.schemas.drawingml.x2006.main.CTNonVisualDrawingProps;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTPoint2D;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTPositiveSize2D;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTBackground;
+import org.openxmlformats.schemas.presentationml.x2006.main.CTComment;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTCommonSlideData;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTGroupShape;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTGroupShapeNonVisual;
@@ -52,6 +55,7 @@ implements Slide<XSLFShape,XSLFTextParagraph> {
     private final CTSlide _slide;
     private XSLFSlideLayout _layout;
     private XSLFComments _comments;
+    private XSLFCommentAuthors _commentAuthors;
     private XSLFNotes _notes;
 
     /**
@@ -124,10 +128,12 @@ implements Slide<XSLFShape,XSLFTextParagraph> {
         return "sld";
     }
 
+    @SuppressWarnings({"WeakerAccess", "ProtectedMemberInFinalClass"})
     protected void removeChartRelation(XSLFChart chart) {
         removeRelation(chart);
     }
 
+    @SuppressWarnings({"WeakerAccess", "ProtectedMemberInFinalClass"})
     protected void removeLayoutRelation(XSLFSlideLayout layout) {
         removeRelation(layout, false);
     }
@@ -137,6 +143,7 @@ implements Slide<XSLFShape,XSLFTextParagraph> {
         return getSlideLayout();
     }
 
+    @Override
     public XSLFSlideLayout getSlideLayout(){
         if(_layout == null){
             for (POIXMLDocumentPart p : getRelations()) {
@@ -155,20 +162,64 @@ implements Slide<XSLFShape,XSLFTextParagraph> {
         return getSlideLayout().getSlideMaster();
     }
 
-    public XSLFComments getComments() {
+    /**
+     * @return the comments part or {@code null} if there weren't any comments
+     * @since POI 4.0.0
+     */
+    @SuppressWarnings("WeakerAccess")
+    public XSLFComments getCommentsPart() {
         if(_comments == null) {
             for (POIXMLDocumentPart p : getRelations()) {
                 if (p instanceof XSLFComments) {
                     _comments = (XSLFComments)p;
+                    break;
                 }
             }
         }
-        if(_comments == null) {
-            // This slide lacks comments
-            // Not all have them, sorry...
-            return null;
-        }
+
         return _comments;
+    }
+
+    /**
+     * @return the comment authors part or {@code null} if there weren't any comments
+     * @since POI 4.0.0
+     */
+    @SuppressWarnings("WeakerAccess")
+    public XSLFCommentAuthors getCommentAuthorsPart() {
+        if(_commentAuthors == null) {
+            // first scan the slide relations
+            for (POIXMLDocumentPart p : getRelations()) {
+                if (p instanceof XSLFCommentAuthors) {
+                    _commentAuthors = (XSLFCommentAuthors)p;
+                    return _commentAuthors;
+                }
+            }
+            // then scan the presentation relations
+            for (POIXMLDocumentPart p : getSlideShow().getRelations()) {
+                if (p instanceof XSLFCommentAuthors) {
+                    _commentAuthors = (XSLFCommentAuthors)p;
+                    return _commentAuthors;
+                }
+            }
+        }
+
+        return null;
+    }
+
+
+    @Override
+    public List<XSLFComment> getComments() {
+        final List<XSLFComment> comments = new ArrayList<>();
+        final XSLFComments xComments = getCommentsPart();
+        final XSLFCommentAuthors xAuthors = getCommentAuthorsPart();
+        if (xComments != null) {
+            //noinspection deprecation
+            for (final CTComment xc : xComments.getCTCommentsList().getCmArray()) {
+                comments.add(new XSLFComment(xc, xAuthors));
+            }
+        }
+
+        return comments;
     }
 
     @Override
@@ -222,6 +273,7 @@ implements Slide<XSLFShape,XSLFTextParagraph> {
      *
      * @param value whether shapes on the master slide should be shown or not.
      */
+    @SuppressWarnings("WeakerAccess")
     public void setFollowMasterGraphics(boolean value){
         _slide.setShowMasterSp(value);
     }
@@ -264,7 +316,7 @@ implements Slide<XSLFShape,XSLFTextParagraph> {
 
         if(bgOther.isSetBgPr() && bgOther.getBgPr().isSetBlipFill()){
             String idOther = bgOther.getBgPr().getBlipFill().getBlip().getEmbed();
-            String idThis = importBlip(idOther, src.getPackagePart());
+            String idThis = importBlip(idOther, src);
             bgThis.getBgPr().getBlipFill().getBlip().setEmbed(idThis);
 
         }
@@ -312,7 +364,7 @@ implements Slide<XSLFShape,XSLFTextParagraph> {
     /**
      * Render this sheet into the supplied graphics object
      *
-     * @param graphics
+     * @param graphics the graphics context to draw to
      */
     @Override
     public void draw(Graphics2D graphics){
@@ -344,5 +396,11 @@ implements Slide<XSLFShape,XSLFTextParagraph> {
     public boolean isHidden() {
         CTSlide sld = getXmlObject();
         return sld.isSetShow() && !sld.getShow();
-    }    
+    }
+
+    @Override
+    public String getSlideName() {
+        final CTCommonSlideData cSld = getXmlObject().getCSld();
+        return cSld.isSetName() ? cSld.getName() : "Slide"+getSlideNumber();
+    }
 }

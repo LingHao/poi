@@ -16,7 +16,7 @@
 ==================================================================== */
 package org.apache.poi.xwpf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +28,7 @@ import java.util.Arrays;
 import javax.xml.namespace.QName;
 
 import org.apache.poi.EncryptedDocumentException;
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.poifs.crypt.CryptoFunctions;
 import org.apache.poi.poifs.crypt.HashAlgorithm;
@@ -270,7 +270,7 @@ public class XWPFSettings extends POIXMLDocumentPart {
 
 
             SecureRandom random = new SecureRandom();
-            byte salt[] = random.generateSeed(16);
+            byte[] salt = random.generateSeed(16);
 
             // Iterations specifies the number of times the hashing function shall be iteratively run (using each
             // iteration's result as the input for the next iteration).
@@ -280,7 +280,7 @@ public class XWPFSettings extends POIXMLDocumentPart {
             // Implementation Notes List:
             // --> In this third stage, the reversed byte order legacy hash from the second stage shall
             //     be converted to Unicode hex string representation
-            byte hash[] = CryptoFunctions.hashPassword(legacyHash, hashAlgo, salt, spinCount, false);
+            byte[] hash = CryptoFunctions.hashPassword(legacyHash, hashAlgo, salt, spinCount, false);
 
             safeGetDocumentProtection().setSalt(salt);
             safeGetDocumentProtection().setHash(hash);
@@ -300,8 +300,8 @@ public class XWPFSettings extends POIXMLDocumentPart {
      */
     public boolean validateProtectionPassword(String password) {
         BigInteger sid = safeGetDocumentProtection().getCryptAlgorithmSid();
-        byte hash[] = safeGetDocumentProtection().getHash();
-        byte salt[] = safeGetDocumentProtection().getSalt();
+        byte[] hash = safeGetDocumentProtection().getHash();
+        byte[] salt = safeGetDocumentProtection().getSalt();
         BigInteger spinCount = safeGetDocumentProtection().getCryptSpinCount();
 
         if (sid == null || hash == null || salt == null || spinCount == null) return false;
@@ -337,7 +337,7 @@ public class XWPFSettings extends POIXMLDocumentPart {
         // Implementation Notes List:
         // --> In this third stage, the reversed byte order legacy hash from the second stage shall
         //     be converted to Unicode hex string representation
-        byte hash2[] = CryptoFunctions.hashPassword(legacyHash, hashAlgo, salt, spinCount.intValue(), false);
+        byte[] hash2 = CryptoFunctions.hashPassword(legacyHash, hashAlgo, salt, spinCount.intValue(), false);
 
         return Arrays.equals(hash, hash2);
     }
@@ -430,4 +430,48 @@ public class XWPFSettings extends POIXMLDocumentPart {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Check if separate even and odd headings is turned on.
+     *
+     * @return True if even and odd headings is turned on.
+     */
+    public boolean getEvenAndOddHeadings() {
+        return ctSettings.isSetEvenAndOddHeaders();
+    }
+
+    /**
+     * Turn separate even-and-odd headings on or off
+     *
+     * @param enable <code>true</code> to turn on separate even and odd headings, 
+     * <code>false</code> to turn off even and odd headings.
+     */
+    public void setEvenAndOddHeadings(boolean enable) {
+        CTOnOff onOff = CTOnOff.Factory.newInstance();
+        onOff.setVal(enable ? STOnOff.TRUE : STOnOff.FALSE);
+        ctSettings.setEvenAndOddHeaders(onOff);
+    }
+
+    /**
+     * Check if mirrored margins is turned on
+     *
+     * @return True if mirrored margins is turned on.
+     */
+    public boolean getMirrorMargins() {
+        return ctSettings.isSetMirrorMargins();
+    }
+
+    /**
+     * Turn mirrored margins on or off
+     *
+     * @param enable <code>true</code> to turn on mirrored margins, 
+     * <code>false</code> to turn off mirrored marginss.
+     */
+    public void setMirrorMargins(boolean enable) {
+        CTOnOff onOff = CTOnOff.Factory.newInstance();
+        onOff.setVal(enable ? STOnOff.TRUE : STOnOff.FALSE);
+        ctSettings.setMirrorMargins(onOff);
+    }
+
+
 }

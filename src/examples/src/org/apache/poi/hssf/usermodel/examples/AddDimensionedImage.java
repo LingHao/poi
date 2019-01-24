@@ -142,13 +142,13 @@ import org.apache.poi.ss.usermodel.ClientAnchor.AnchorType;
 public class AddDimensionedImage {
 
     // Four constants that determine how - and indeed whether - the rows
-    // and columns an image may overlie should be expanded to accomodate that
+    // and columns an image may overlie should be expanded to accommodate that
     // image.
     // Passing EXPAND_ROW will result in the height of a row being increased
-    // to accomodate the image if it is not already larger. The image will
+    // to accommodate the image if it is not already larger. The image will
     // be layed across one or more columns.
     // Passing EXPAND_COLUMN will result in the width of the column being
-    // increased to accomodate the image if it is not already larger. The image
+    // increased to accommodate the image if it is not already larger. The image
     // will be layed across one or many rows.
     // Passing EXPAND_ROW_AND_COLUMN will result in the height of the row
     // bing increased along with the width of the column to accomdate the
@@ -266,7 +266,7 @@ public class AddDimensionedImage {
         }
 
         // Call methods to calculate how the image and sheet should be
-        // manipulated to accomodate the image; columns and then rows.
+        // manipulated to accommodate the image; columns and then rows.
         colClientAnchorDetail = this.fitImageToColumns(sheet, colNumber,
                 reqImageWidthMM, resizeBehaviour);
         rowClientAnchorDetail = this.fitImageToRows(sheet, rowNumber,
@@ -279,14 +279,19 @@ public class AddDimensionedImage {
         // The first two parameters are not used currently but could be if the
         // need arose to extend the functionality of this code by adding the
         // ability to specify that a clear 'border' be placed around the image.
-        anchor = new HSSFClientAnchor(0,
-                                      0,
-                                      colClientAnchorDetail.getInset(),
-                                      rowClientAnchorDetail.getInset(),
-                                      (short)colClientAnchorDetail.getFromIndex(),
-                                      rowClientAnchorDetail.getFromIndex(),
-                                      (short)colClientAnchorDetail.getToIndex(),
-                                      rowClientAnchorDetail.getToIndex());
+        int dx1 = 0, dy1 = 0, dx2 = 0, dy2 = 0;
+        short col1 = 0, col2 = 0, row1 = 0, row2 = 0;
+        if (colClientAnchorDetail != null) {
+            dx2 = colClientAnchorDetail.getInset();
+            col1 = (short)colClientAnchorDetail.getFromIndex();
+            col2 = (short)colClientAnchorDetail.getToIndex();
+        }
+        if (rowClientAnchorDetail != null) {
+            dy2 = rowClientAnchorDetail.getInset();
+            row1 = (short)rowClientAnchorDetail.getFromIndex();
+            row2 = (short)rowClientAnchorDetail.getToIndex();
+        }
+        anchor = new HSSFClientAnchor(dx1, dy1, dx2, dy2, col1, row1, col2, row2);
 
         // For now, set the anchor type to do not move or resize the
         // image as the size of the row/column is adjusted. This could easilly
@@ -307,7 +312,7 @@ public class AddDimensionedImage {
     }
 
     /**
-     * Determines whether the sheets columns should be re-sized to accomodate
+     * Determines whether the sheets columns should be re-sized to accommodate
      * the image, adjusts the columns width if necessary and creates then
      * returns a ClientAnchorDetail object that facilitates construction of
      * an HSSFClientAnchor that will fix the image on the sheet and establish
@@ -343,7 +348,7 @@ public class AddDimensionedImage {
         colWidthMM = ConvertImageUnits.widthUnits2Millimetres(
                 (short)sheet.getColumnWidth(colNumber));
 
-        // Check that the column's width will accomodate the image at the
+        // Check that the column's width will accommodate the image at the
         // required dimension. If the width of the column is LESS than the
         // required width of the image, decide how the application should
         // respond - resize the column or overlay the image across one or more
@@ -391,7 +396,7 @@ public class AddDimensionedImage {
     }
 
     /**
-     * Determines whether the sheet's row should be re-sized to accomodate
+     * Determines whether the sheet's row should be re-sized to accommodate
      * the image, adjusts the rows height if necessary and creates then
      * returns a ClientAnchorDetail object that facilitates construction of
      * an HSSFClientAnchor that will fix the image on the sheet and establish
@@ -431,7 +436,7 @@ public class AddDimensionedImage {
         // Get the row's height in millimetres
         double rowHeightMM = row.getHeightInPoints() / ConvertImageUnits.POINTS_PER_MILLIMETRE;
 
-        // Check that the row's height will accomodate the image at the required
+        // Check that the row's height will accommodate the image at the required
         // dimensions. If the height of the row is LESS than the required height
         // of the image, decide how the application should respond - resize the
         // row or overlay the image across a series of rows.

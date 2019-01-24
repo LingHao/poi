@@ -21,6 +21,7 @@ import static org.apache.poi.POITestCase.assertContains;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -66,8 +67,6 @@ import org.apache.poi.hssf.record.common.UnicodeString;
 import org.apache.poi.hssf.record.crypto.Biff8EncryptionKey;
 import org.apache.poi.poifs.filesystem.DocumentEntry;
 import org.apache.poi.poifs.filesystem.DocumentInputStream;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
-import org.apache.poi.poifs.filesystem.OPOIFSFileSystem;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.formula.ptg.Area3DPtg;
 import org.apache.poi.ss.formula.ptg.DeletedArea3DPtg;
@@ -88,7 +87,6 @@ import org.apache.poi.ss.usermodel.SheetVisibility;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.util.LocaleUtil;
-import org.junit.After;
 import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -101,12 +99,6 @@ import org.junit.Test;
  * define the test in the base class {@link BaseTestBugzillaIssues}</b>
  */
 public final class TestBugs extends BaseTestBugzillaIssues {
-    // to not affect other tests running in the same JVM
-    @After
-    public void resetPassword() {
-        Biff8EncryptionKey.setCurrentUserPassword(null);
-    }
-
     public TestBugs() {
         super(HSSFITestDataProvider.instance);
     }
@@ -570,8 +562,8 @@ public final class TestBugs extends BaseTestBugzillaIssues {
         HSSFWorkbook wb = openSample("35564.xls");
 
         HSSFSheet sheet = wb.getSheetAt(0);
-        assertEquals(false, sheet.isGridsPrinted());
-        assertEquals(false, sheet.getProtect());
+        assertFalse(sheet.isGridsPrinted());
+        assertFalse(sheet.getProtect());
 
         writeOutAndReadBack(wb).close();
 
@@ -1027,7 +1019,7 @@ public final class TestBugs extends BaseTestBugzillaIssues {
 
         assertEquals(4, wb.getNumberOfFontsAsInt());
 
-        HSSFFont f1 = wb.getFontAt((short) 0);
+        HSSFFont f1 = wb.getFontAt(0);
         assertFalse(f1.getBold());
 
         // Check that asking for the same font
@@ -1042,11 +1034,7 @@ public final class TestBugs extends BaseTestBugzillaIssues {
                 wb.getFontAt(2),
                 wb.getFontAt(2)
         );
-        assertTrue(
-                wb.getFontAt(0)
-                        !=
-                        wb.getFontAt(2)
-        );
+        assertNotSame(wb.getFontAt(0), wb.getFontAt(2));
 
         // Look for a new font we have
         //  yet to add
@@ -1626,7 +1614,7 @@ public final class TestBugs extends BaseTestBugzillaIssues {
     @Test
     public void bug46904() throws Exception {
         try {
-            OPOIFSFileSystem fs = new OPOIFSFileSystem(
+            POIFSFileSystem fs = new POIFSFileSystem(
                     HSSFITestDataProvider.instance.openWorkbookStream("46904.xls"));
             new HSSFWorkbook(fs.getRoot(), false).close();
             fail("Should catch exception here");
@@ -1636,7 +1624,7 @@ public final class TestBugs extends BaseTestBugzillaIssues {
             ));
         }
         try {
-            try (NPOIFSFileSystem fs = new NPOIFSFileSystem(
+            try (POIFSFileSystem fs = new POIFSFileSystem(
                     HSSFITestDataProvider.instance.openWorkbookStream("46904.xls"))) {
                 new HSSFWorkbook(fs.getRoot(), false).close();
                 fail("Should catch exception here");
@@ -1727,10 +1715,10 @@ public final class TestBugs extends BaseTestBugzillaIssues {
         UnicodeString withoutExt = wb1.getWorkbook().getSSTString(31);
 
         assertEquals("O:Alloc:Qty", withExt.getString());
-        assertTrue((withExt.getOptionFlags() & 0x0004) == 0x0004);
+        assertEquals(0x0004, (withExt.getOptionFlags() & 0x0004));
 
         assertEquals("RT", withoutExt.getString());
-        assertTrue((withoutExt.getOptionFlags() & 0x0004) == 0x0000);
+        assertEquals(0x0000, (withoutExt.getOptionFlags() & 0x0004));
 
         // Something about continues...
 
@@ -1745,10 +1733,10 @@ public final class TestBugs extends BaseTestBugzillaIssues {
         withoutExt = wb2.getWorkbook().getSSTString(31);
 
         assertEquals("O:Alloc:Qty", withExt.getString());
-        assertTrue((withExt.getOptionFlags() & 0x0004) == 0x0004);
+        assertEquals(0x0004, (withExt.getOptionFlags() & 0x0004));
 
         assertEquals("RT", withoutExt.getString());
-        assertTrue((withoutExt.getOptionFlags() & 0x0004) == 0x0000);
+        assertEquals(0x0000, (withoutExt.getOptionFlags() & 0x0004));
         wb2.close();
     }
 
@@ -2210,12 +2198,10 @@ public final class TestBugs extends BaseTestBugzillaIssues {
      */
     @Test
     public void bug50833() throws Exception {
-        Biff8EncryptionKey.setCurrentUserPassword(null);
-
         HSSFWorkbook wb1 = openSample("50833.xls");
         HSSFSheet s = wb1.getSheetAt(0);
         assertEquals("Sheet1", s.getSheetName());
-        assertEquals(false, s.getProtect());
+        assertFalse(s.getProtect());
 
         HSSFCell c = s.getRow(0).getCell(0);
         assertEquals("test cell value", c.getRichStringCellValue().getString());
@@ -2353,7 +2339,7 @@ public final class TestBugs extends BaseTestBugzillaIssues {
 
         HSSFWorkbook wbPOIFS = new HSSFWorkbook(new POIFSFileSystem(
                 new ByteArrayInputStream(data)).getRoot(), false);
-        HSSFWorkbook wbNPOIFS = new HSSFWorkbook(new NPOIFSFileSystem(
+        HSSFWorkbook wbNPOIFS = new HSSFWorkbook(new POIFSFileSystem(
                 new ByteArrayInputStream(data)).getRoot(), false);
 
         assertEquals(2, wbPOIFS.getNumberOfSheets());
@@ -2370,7 +2356,7 @@ public final class TestBugs extends BaseTestBugzillaIssues {
 
         HSSFWorkbook wbPOIFS = new HSSFWorkbook(new POIFSFileSystem(
                 new ByteArrayInputStream(data)).getRoot(), false);
-        HSSFWorkbook wbNPOIFS = new HSSFWorkbook(new NPOIFSFileSystem(
+        HSSFWorkbook wbNPOIFS = new HSSFWorkbook(new POIFSFileSystem(
                 new ByteArrayInputStream(data)).getRoot(), false);
 
         for (HSSFWorkbook wb : new HSSFWorkbook[]{wbPOIFS, wbNPOIFS}) {
@@ -2460,10 +2446,6 @@ public final class TestBugs extends BaseTestBugzillaIssues {
         wb.close();
     }
 
-    /**
-     * Note - part of this test is still failing, see
-     * {@link TestUnfixedBugs#test49612()}
-     */
     @Test
     public void bug49612_part() throws IOException {
         HSSFWorkbook wb = HSSFTestDataSamples.openSampleWorkbook("49612.xls");
@@ -2516,7 +2498,7 @@ public final class TestBugs extends BaseTestBugzillaIssues {
 
     @Test
     public void bug53432() throws IOException {
-        Workbook wb1 = new HSSFWorkbook(); //or new HSSFWorkbook();
+        HSSFWorkbook wb1 = new HSSFWorkbook(); //or new HSSFWorkbook();
         wb1.addPicture(new byte[]{123, 22}, Workbook.PICTURE_TYPE_JPEG);
         assertEquals(wb1.getAllPictures().size(), 1);
         wb1.close();
@@ -2524,13 +2506,13 @@ public final class TestBugs extends BaseTestBugzillaIssues {
         wb1.close();
         wb1 = new HSSFWorkbook();
 
-        Workbook wb2 = writeOutAndReadBack((HSSFWorkbook) wb1);
+        HSSFWorkbook wb2 = writeOutAndReadBack(wb1);
         wb1.close();
         assertEquals(wb2.getAllPictures().size(), 0);
         wb2.addPicture(new byte[]{123, 22}, Workbook.PICTURE_TYPE_JPEG);
         assertEquals(wb2.getAllPictures().size(), 1);
 
-        Workbook wb3 = writeOutAndReadBack((HSSFWorkbook) wb2);
+        HSSFWorkbook wb3 = writeOutAndReadBack(wb2);
         wb2.close();
         assertEquals(wb3.getAllPictures().size(), 1);
 
@@ -2605,8 +2587,8 @@ public final class TestBugs extends BaseTestBugzillaIssues {
     @Test(expected = EncryptedDocumentException.class)
     public void bug35897() throws Exception {
         // password is abc
+        Biff8EncryptionKey.setCurrentUserPassword("abc");
         try {
-            Biff8EncryptionKey.setCurrentUserPassword("abc");
             openSample("xor-encryption-abc.xls").close();
         } finally {
             Biff8EncryptionKey.setCurrentUserPassword(null);
@@ -3104,8 +3086,8 @@ public final class TestBugs extends BaseTestBugzillaIssues {
 
     @Test
     public void test61287() throws IOException {
-        final Workbook wb = HSSFTestDataSamples.openSampleWorkbook("61287.xls");
-        ExcelExtractor ex = new ExcelExtractor((HSSFWorkbook) wb);
+        final HSSFWorkbook wb = HSSFTestDataSamples.openSampleWorkbook("61287.xls");
+        ExcelExtractor ex = new ExcelExtractor(wb);
         String text = ex.getText();
         assertContains(text, "\u8D44\u4EA7\u8D1F\u503A\u8868");
         wb.close();
@@ -3113,7 +3095,7 @@ public final class TestBugs extends BaseTestBugzillaIssues {
 
     @Test(expected = RuntimeException.class)
     public void test61300() throws Exception {
-        NPOIFSFileSystem npoifs = new NPOIFSFileSystem(HSSFTestDataSamples.openSampleFileStream("61300.xls"));
+        POIFSFileSystem npoifs = new POIFSFileSystem(HSSFTestDataSamples.openSampleFileStream("61300.xls"));
 
         DocumentEntry entry =
                 (DocumentEntry) npoifs.getRoot().getEntry(SummaryInformation.DEFAULT_STREAM_NAME);
@@ -3148,5 +3130,24 @@ public final class TestBugs extends BaseTestBugzillaIssues {
             assertEquals(10, font.getFontHeightInPoints());
             assertEquals("\uFF2D\uFF33 \uFF30\u30B4\u30B7\u30C3\u30AF", font.getFontName());
         }
+    }
+
+    @Test
+    public void test60460() throws IOException {
+        final Workbook wb = HSSFTestDataSamples.openSampleWorkbook("60460.xls");
+
+        assertEquals(2, wb.getAllNames().size());
+
+        Name rangedName = wb.getAllNames().get(0);
+        assertFalse(rangedName.isFunctionName());
+        assertEquals("'[\\\\HEPPC3\\gt$\\Teaching\\Syn\\physyn.xls]#REF'!$AK$70:$AL$70",
+                // replace '/' to make test work equally on Windows and Linux
+                rangedName.getRefersToFormula().replace("/", "\\"));
+
+        rangedName = wb.getAllNames().get(1);
+        assertFalse(rangedName.isFunctionName());
+        assertEquals("Questionnaire!$A$1:$L$65", rangedName.getRefersToFormula());
+
+        wb.close();
     }
 }

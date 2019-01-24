@@ -44,7 +44,7 @@ import org.junit.Test;
 public final class TestIOUtils {
 
     static File TMP;
-    static final long LENGTH = new Random().nextInt(10000);
+    static final long LENGTH = 300+new Random().nextInt(9000);
 
     @BeforeClass
     public static void setUp() throws IOException {
@@ -59,7 +59,7 @@ public final class TestIOUtils {
     }
 
     @AfterClass
-    public static void tearDown() throws IOException {
+    public static void tearDown() {
         assertTrue(TMP.delete());
     }
 
@@ -99,13 +99,13 @@ public final class TestIOUtils {
     }
 
     @Test
-    public void testToByteArrayByteBuffer() throws Exception {
+    public void testToByteArrayByteBuffer() {
         assertArrayEquals(new byte[] { 1, 2, 3},
                 IOUtils.toByteArray(ByteBuffer.wrap(new byte[]{1, 2, 3}), 10));
     }
 
     @Test
-    public void testToByteArrayByteBufferToSmall() throws Exception {
+    public void testToByteArrayByteBufferToSmall() {
         assertArrayEquals(new byte[] { 1, 2, 3, 4, 5, 6, 7},
                 IOUtils.toByteArray(ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5, 6, 7}), 3));
     }
@@ -172,6 +172,29 @@ public final class TestIOUtils {
         }
     }
 
+    @Test(expected = RecordFormatException.class)
+    public void testMaxLengthTooLong() throws IOException {
+        try (InputStream is = new FileInputStream(TMP)) {
+            IOUtils.toByteArray(is, Integer.MAX_VALUE, 100);
+        }
+    }
+
+    @Test
+    public void testMaxLengthIgnored() throws IOException {
+        try (InputStream is = new FileInputStream(TMP)) {
+            IOUtils.toByteArray(is, 90, Integer.MAX_VALUE);
+            IOUtils.toByteArray(is, 90, 100);
+            IOUtils.toByteArray(is, Integer.MAX_VALUE, Integer.MAX_VALUE);
+        }
+    }
+
+    @Test(expected = RecordFormatException.class)
+    public void testMaxLengthInvalid() throws IOException {
+        try (InputStream is = new FileInputStream(TMP)) {
+            IOUtils.toByteArray(is, 90, 80);
+        }
+    }
+
     @Test
     public void testWonkyInputStream() throws IOException {
         long skipped = IOUtils.skipFully(new WonkyInputStream(), 10000);
@@ -187,19 +210,19 @@ public final class TestIOUtils {
         int readCalled;
 
         @Override
-        public int read() throws IOException {
+        public int read() {
             readCalled++;
             return 0;
         }
 
         @Override
-        public int read(byte[] arr, int offset, int len) throws IOException {
+        public int read(byte[] arr, int offset, int len) {
             readCalled++;
             return len;
         }
 
         @Override
-        public long skip(long len) throws IOException {
+        public long skip(long len) {
             skipCalled++;
             if (skipCalled == 1) {
                 return 0;

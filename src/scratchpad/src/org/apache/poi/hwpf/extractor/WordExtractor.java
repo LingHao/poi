@@ -21,7 +21,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.poi.POIOLE2TextExtractor;
+import org.apache.poi.extractor.POIOLE2TextExtractor;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.converter.WordToTextConverter;
 import org.apache.poi.hwpf.usermodel.HeaderStories;
@@ -90,11 +90,8 @@ public final class WordExtractor extends POIOLE2TextExtractor {
 
         // Process the first argument as a file
         InputStream fin = new FileInputStream( args[0] );
-        WordExtractor extractor = new WordExtractor( fin );
-        try {
-        	System.out.println( extractor.getText() );
-        } finally {
-        	extractor.close();
+        try (WordExtractor extractor = new WordExtractor(fin)) {
+            System.out.println(extractor.getText());
         }
     }
 
@@ -175,7 +172,7 @@ public final class WordExtractor extends POIOLE2TextExtractor {
         }
         if ( text.endsWith( "\n\n" ))
         {
-            out.append( text.substring( 0, text.length() - 1 ));
+            out.append(text, 0, text.length() - 1);
             return;
         }
         out.append( text );

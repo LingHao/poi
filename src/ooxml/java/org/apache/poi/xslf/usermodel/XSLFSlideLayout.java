@@ -16,11 +16,11 @@
 ==================================================================== */
 package org.apache.poi.xslf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.IOException;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.sl.usermodel.MasterSheet;
 import org.apache.poi.sl.usermodel.Placeholder;
@@ -28,20 +28,14 @@ import org.apache.poi.util.Beta;
 import org.apache.poi.util.Internal;
 import org.apache.xmlbeans.XmlException;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTBackground;
-import org.openxmlformats.schemas.presentationml.x2006.main.CTPlaceholder;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideLayout;
 import org.openxmlformats.schemas.presentationml.x2006.main.SldLayoutDocument;
 
 @Beta
 public class XSLFSlideLayout extends XSLFSheet
 implements MasterSheet<XSLFShape,XSLFTextParagraph> {
-    private CTSlideLayout _layout;
+    private final CTSlideLayout _layout;
     private XSLFSlideMaster _master;
-
-    XSLFSlideLayout() {
-        super();
-        _layout = CTSlideLayout.Factory.newInstance();
-    }
 
     /**
      * @since POI 3.14-Beta1
@@ -76,6 +70,7 @@ implements MasterSheet<XSLFShape,XSLFTextParagraph> {
      * @return slide master. Never null.
      * @throws IllegalStateException if slide master was not found
      */
+    @SuppressWarnings("WeakerAccess")
     public XSLFSlideMaster getSlideMaster() {
         if (_master == null) {
             for (POIXMLDocumentPart p : getRelations()) {
@@ -106,22 +101,6 @@ implements MasterSheet<XSLFShape,XSLFTextParagraph> {
         return _layout.getShowMasterSp();
     }
 
-    /**
-     * Render this sheet into the supplied graphics object
-     */
-    @Override
-    protected boolean canDraw(XSLFShape shape) {
-        if (shape instanceof XSLFSimpleShape) {
-            XSLFSimpleShape txt = (XSLFSimpleShape) shape;
-            CTPlaceholder ph = txt.getCTPlaceholder();
-            if (ph != null) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-
     @Override
     public XSLFBackground getBackground() {
         CTBackground bg = _layout.getCSld().getBg();
@@ -137,6 +116,7 @@ implements MasterSheet<XSLFShape,XSLFTextParagraph> {
      *
      * @param slide destination slide
      */
+    @SuppressWarnings("WeakerAccess")
     public void copyLayout(XSLFSlide slide) {
         for (XSLFShape sh : getShapes()) {
             if (sh instanceof XSLFTextShape) {

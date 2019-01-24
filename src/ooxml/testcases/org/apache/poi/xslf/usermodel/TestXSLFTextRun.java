@@ -22,13 +22,15 @@ import static org.apache.poi.sl.TestCommonSL.sameColor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.awt.Color;
 import java.io.IOException;
 
+import org.apache.poi.sl.draw.DrawTextParagraph;
 import org.junit.Test;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTTextLineBreak;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTTextParagraph;
+import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
 
 /**
  * @author Yegor Kozlov
@@ -65,17 +67,17 @@ public class TestXSLFTextRun {
         r.setFontSize(13.0);
         assertEquals(13.0, r.getFontSize(), 0);
 
-        assertEquals(false, r.isSuperscript());
+        assertFalse(r.isSuperscript());
         r.setSuperscript(true);
-        assertEquals(true, r.isSuperscript());
+        assertTrue(r.isSuperscript());
         r.setSuperscript(false);
-        assertEquals(false, r.isSuperscript());
+        assertFalse(r.isSuperscript());
 
-        assertEquals(false, r.isSubscript());
+        assertFalse(r.isSubscript());
         r.setSubscript(true);
-        assertEquals(true, r.isSubscript());
+        assertTrue(r.isSubscript());
         r.setSubscript(false);
-        assertEquals(false, r.isSubscript());
+        assertFalse(r.isSubscript());
         
         ppt.close();
     }
@@ -94,20 +96,25 @@ public class TestXSLFTextRun {
         try (XMLSlideShow ppt = new XMLSlideShow()) {
             XSLFSlide slide = ppt.createSlide();
             XSLFTextShape sh = slide.createAutoShape();
-            XSLFTextRun r = sh.addNewTextParagraph().addNewTextRun();
-            assertEquals(unicodeSurrogates, r.getRenderableText(unicodeSurrogates));
+            XSLFTextParagraph p = sh.addNewTextParagraph();
+            XSLFTextRun r = p.addNewTextRun();
+            r.setText(unicodeSurrogates);
+
+            assertEquals(unicodeSurrogates, new DrawTextParagraph(p).getRenderableText(r));
         }
     }
 
     @Test
-    public void testCopyNullFontSize() throws IOException {
+    public void testCopyNullFontSize() {
         XMLSlideShow ppt = new XMLSlideShow();
         XSLFSlide slide = ppt.createSlide();
         XSLFTextShape sh = slide.createAutoShape();
 
         XSLFTextRun r = sh.addNewTextParagraph().addNewTextRun();
-        XSLFTextRun s = mock(XSLFTextRun.class);
-        when(s.getFontSize()).thenReturn(null);
+
+        XSLFTextRun s = new XSLFTextRun(CTTextLineBreak.Factory.newInstance(),
+                new XSLFTextParagraph(CTTextParagraph.Factory.newInstance(),
+                        new XSLFTextBox(CTShape.Factory.newInstance(), slide)));
 
         r.copy(s);
     }

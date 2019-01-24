@@ -182,10 +182,10 @@ public class HwmfEscape implements HwmfRecord {
     /**
      * An array of bytes of size ByteCount.
      */
-    private byte escapeData[];
+    private byte[] escapeData;
     
     @Override
-    public HwmfRecordType getRecordType() {
+    public HwmfRecordType getWmfRecordType() {
         return HwmfRecordType.escape;
     }
     

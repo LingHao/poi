@@ -145,20 +145,20 @@ public class DataFormatter implements Observer {
      *  Magenta, Red, White, Yellow, "Color n" (1<=n<=56)
      */
     private static final Pattern colorPattern = 
-       Pattern.compile("(\\[BLACK\\])|(\\[BLUE\\])|(\\[CYAN\\])|(\\[GREEN\\])|" +
-       		"(\\[MAGENTA\\])|(\\[RED\\])|(\\[WHITE\\])|(\\[YELLOW\\])|" +
-       		"(\\[COLOR\\s*\\d\\])|(\\[COLOR\\s*[0-5]\\d\\])", Pattern.CASE_INSENSITIVE);
+       Pattern.compile("(\\[BLACK])|(\\[BLUE])|(\\[CYAN])|(\\[GREEN])|" +
+       		"(\\[MAGENTA])|(\\[RED])|(\\[WHITE])|(\\[YELLOW])|" +
+       		"(\\[COLOR\\s*\\d])|(\\[COLOR\\s*[0-5]\\d])", Pattern.CASE_INSENSITIVE);
 
     /**
      * A regex to identify a fraction pattern.
      * This requires that replaceAll("\\?", "#") has already been called 
      */
-    private static final Pattern fractionPattern = Pattern.compile("(?:([#\\d]+)\\s+)?(#+)\\s*\\/\\s*([#\\d]+)");
+    private static final Pattern fractionPattern = Pattern.compile("(?:([#\\d]+)\\s+)?(#+)\\s*/\\s*([#\\d]+)");
 
     /**
      * A regex to strip junk out of fraction formats
      */
-    private static final Pattern fractionStripper = Pattern.compile("(\"[^\"]*\")|([^ \\?#\\d\\/]+)");
+    private static final Pattern fractionStripper = Pattern.compile("(\"[^\"]*\")|([^ ?#\\d/]+)");
 
     /**
      * A regex to detect if an alternate grouping character is used
@@ -267,7 +267,7 @@ public class DataFormatter implements Observer {
      * @param  localeIsAdapting (true only if locale is not user-specified)
      * @param  emulateCSV whether to emulate CSV output.
      */
-    private DataFormatter(Locale locale, boolean localeIsAdapting, boolean emulateCSV) {
+    public DataFormatter(Locale locale, boolean localeIsAdapting, boolean emulateCSV) {
         this.localeIsAdapting = true;
         localeChangedObservable.addObserver(this);
         // localeIsAdapting must be true prior to this first checkForLocaleChange call.
@@ -413,7 +413,7 @@ public class DataFormatter implements Observer {
             if (symbol.indexOf('$') > -1) {
                 symbol = symbol.substring(0, symbol.indexOf('$')) +
                         '\\' +
-                        symbol.substring(symbol.indexOf('$'), symbol.length());
+                        symbol.substring(symbol.indexOf('$'));
             }
             formatStr = m.replaceAll(symbol);
             m = localePatternGroup.matcher(formatStr);
@@ -450,7 +450,6 @@ public class DataFormatter implements Observer {
             
             // Strip custom text in quotes and escaped characters for now as it can cause performance problems in fractions.
             //String strippedFormatStr = formatStr.replaceAll("\\\\ ", " ").replaceAll("\\\\.", "").replaceAll("\"[^\"]*\"", " ").replaceAll("\\?", "#");
-            //System.out.println("formatStr: "+strippedFormatStr);
             return new FractionFormat(defaultFractionWholePartFormat, defaultFractionFractionPartFormat);
         }
         
@@ -812,6 +811,9 @@ public class DataFormatter implements Observer {
      * @return Formatted value
      */
     private String getFormattedDateString(Cell cell, ConditionalFormattingEvaluator cfEvaluator) {
+        if (cell == null) {
+            return null;
+        }
         Format dateFormat = getFormat(cell, cfEvaluator);
         if(dateFormat instanceof ExcelStyleDateFormatter) {
            // Hint about the raw excel value
@@ -837,7 +839,9 @@ public class DataFormatter implements Observer {
      * @return a formatted number string
      */
     private String getFormattedNumberString(Cell cell, ConditionalFormattingEvaluator cfEvaluator) {
-
+        if (cell == null) {
+            return null;
+        }
         Format numberFormat = getFormat(cell, cfEvaluator);
         double d = cell.getNumericCellValue();
         if (numberFormat == null) {

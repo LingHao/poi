@@ -33,11 +33,24 @@ public abstract class TwoOperandNumericOperation extends Fixed2ArgFunction imple
 		return OperandResolver.coerceValueToDouble(ve);
 	}
 	
-	public ValueEval evaluateArray(ValueEval args[], int srcRowIndex, int srcColumnIndex) {
+	public ValueEval evaluateArray(ValueEval[] args, int srcRowIndex, int srcColumnIndex) {
 	    if (args.length != 2) {
 	        return ErrorEval.VALUE_INVALID;
 	    }
-	    return new ArrayEval().evaluate(srcRowIndex, srcColumnIndex, args[0], args[1]);
+	    //return new ArrayEval().evaluate(srcRowIndex, srcColumnIndex, args[0], args[1]);
+
+		return evaluateTwoArrayArgs(args[0], args[1], srcRowIndex, srcColumnIndex,
+				(vA, vB) -> {
+					try {
+						double d0 = OperandResolver.coerceValueToDouble(vA);
+						double d1 = OperandResolver.coerceValueToDouble(vB);
+						double result = evaluate(d0, d1);
+						return new NumberEval(result);
+					} catch (EvaluationException e){
+						return e.getErrorEval();
+					}
+				});
+
 	}
 	
 	public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0, ValueEval arg1) {
@@ -73,8 +86,8 @@ public abstract class TwoOperandNumericOperation extends Fixed2ArgFunction imple
 	    protected double[][] evaluate(double[][] d1, double[][] d2) throws IllegalArgumentException, EvaluationException {
 	        int width = (d1[0].length < d2[0].length) ? d1[0].length : d2[0].length;
 	        int height = (d1.length < d2.length) ? d1.length : d2.length;
-	        
-	        double result[][] = new double[height][width];
+
+            double[][] result = new double[height][width];
 	        
 	        for (int j = 0; j < height; j++) {
 	            for (int i = 0; i < width; i++) {

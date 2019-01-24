@@ -20,11 +20,12 @@ package org.apache.poi.openxml4j.opc;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.zip.ZipEntry;
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.exceptions.InvalidOperationException;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
+import org.apache.poi.openxml4j.opc.internal.ContentType;
 import org.apache.poi.openxml4j.opc.internal.marshallers.ZipPartMarshaller;
 import org.apache.poi.util.NotImplemented;
 
@@ -40,23 +41,26 @@ public class ZipPackagePart extends PackagePart {
 	/**
 	 * The zip entry corresponding to this part.
 	 */
-	private ZipEntry zipEntry;
+	private ZipArchiveEntry zipEntry;
 
 	/**
 	 * Constructor.
 	 *
 	 * @param container
 	 *            The container package.
+	 * @param zipEntry
+	 *            The zip entry corresponding to this part.
 	 * @param partName
-	 *            Part name.
+	 *            The part name.
 	 * @param contentType
 	 *            Content type.
 	 * @throws InvalidFormatException
-	 *             Throws if the content of this part invalid.
+	 *             Throws if the content of this part is invalid.
 	 */
-	public ZipPackagePart(OPCPackage container, PackagePartName partName,
-			String contentType) throws InvalidFormatException {
-		super(container, partName, contentType);
+	public ZipPackagePart(OPCPackage container, ZipArchiveEntry zipEntry,
+			PackagePartName partName, String contentType)
+			throws InvalidFormatException {
+		this(container, zipEntry, partName, contentType, true);
 	}
 
 	/**
@@ -73,10 +77,10 @@ public class ZipPackagePart extends PackagePart {
 	 * @throws InvalidFormatException
 	 *             Throws if the content of this part is invalid.
 	 */
-	public ZipPackagePart(OPCPackage container, ZipEntry zipEntry,
-			PackagePartName partName, String contentType)
+	/* package */ ZipPackagePart(OPCPackage container, ZipArchiveEntry zipEntry,
+						  PackagePartName partName, String contentType, boolean loadRelationships)
 			throws InvalidFormatException {
-		super(container, partName, contentType);
+		super(container, partName, new ContentType(contentType), loadRelationships);
 		this.zipEntry = zipEntry;
 	}
 
@@ -85,7 +89,7 @@ public class ZipPackagePart extends PackagePart {
 	 *
 	 * @return The zip entry in the zip structure coresponding to this part.
 	 */
-	public ZipEntry getZipArchive() {
+	public ZipArchiveEntry getZipArchive() {
 		return zipEntry;
 	}
 

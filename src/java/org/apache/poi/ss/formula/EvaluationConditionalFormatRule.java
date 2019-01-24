@@ -21,15 +21,7 @@ import java.text.CollationKey;
 import java.text.Collator;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.poi.ss.formula.eval.BlankEval;
 import org.apache.poi.ss.formula.eval.BoolEval;
@@ -632,7 +624,7 @@ public class EvaluationConditionalFormatRule implements Comparable<EvaluationCon
             for (int c = region.getFirstColumn(); c <= region.getLastColumn(); c++) {
                 Cell cell = row.getCell(c);
                 final ValueAndFormat cv = getCellValue(cell);
-                if (cv != null && (withText || cv.isNumber()) ) {
+                if (withText || cv.isNumber()) {
                     allValues.add(cv);
                 }
             }
@@ -646,13 +638,19 @@ public class EvaluationConditionalFormatRule implements Comparable<EvaluationCon
 
     private ValueAndFormat getCellValue(Cell cell) {
         if (cell != null) {
-            final CellType type = cell.getCellType();
-            if (type == CellType.NUMERIC || (type == CellType.FORMULA && cell.getCachedFormulaResultType() == CellType.NUMERIC) ) {
-                return new ValueAndFormat(Double.valueOf(cell.getNumericCellValue()), cell.getCellStyle().getDataFormatString(), decimalTextFormat);
-            } else if (type == CellType.STRING || (type == CellType.FORMULA && cell.getCachedFormulaResultType() == CellType.STRING) ) {
-                return new ValueAndFormat(cell.getStringCellValue(), cell.getCellStyle().getDataFormatString());
-            } else if (type == CellType.BOOLEAN || (type == CellType.FORMULA && cell.getCachedFormulaResultType() == CellType.BOOLEAN) ) {
-                return new ValueAndFormat(cell.getStringCellValue(), cell.getCellStyle().getDataFormatString());
+            final String format = cell.getCellStyle().getDataFormatString();
+            CellType type = cell.getCellType();
+            if (type == CellType.FORMULA) {
+                type = cell.getCachedFormulaResultType();
+            }
+            switch (type) {
+                case NUMERIC:
+                    return new ValueAndFormat(Double.valueOf(cell.getNumericCellValue()), format, decimalTextFormat);
+                case STRING:
+                case BOOLEAN:
+                    return new ValueAndFormat(cell.getStringCellValue(), format);
+                default:
+                    break;
             }
         }
         return new ValueAndFormat("", "");
@@ -894,9 +892,9 @@ public class EvaluationConditionalFormatRule implements Comparable<EvaluationCon
                 return false;
             }
             ValueAndFormat o = (ValueAndFormat) obj;
-            return ( value == o.value || value.equals(o.value))
-                    && ( format == o.format || format.equals(o.format))
-                    && (string == o.string || string.equals(o.string));
+            return (Objects.equals(value, o.value)
+                    && Objects.equals(format, o.format)
+                    && Objects.equals(string, o.string));
         }
         
         /**

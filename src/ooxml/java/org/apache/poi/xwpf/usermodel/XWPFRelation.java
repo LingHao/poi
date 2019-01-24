@@ -20,9 +20,9 @@ package org.apache.poi.xwpf.usermodel;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.poi.POIXMLDocument;
-import org.apache.poi.POIXMLDocumentPart;
-import org.apache.poi.POIXMLRelation;
+import org.apache.poi.ooxml.POIXMLDocument;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLRelation;
 import org.apache.poi.openxml4j.opc.PackageRelationshipTypes;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -147,10 +147,10 @@ public final class XWPFRelation extends POIXMLRelation {
             XWPFFootnotes.class
     );
     public static final XWPFRelation ENDNOTE = new XWPFRelation(
-            null,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml",
             "http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes",
-            null,
-            null
+            "/word/endnotes.xml",
+            XWPFEndnotes.class
     );
     /**
      * Supported image formats

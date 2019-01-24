@@ -33,8 +33,11 @@ import org.apache.poi.hpsf.SummaryInformation;
  * The methods {@link #getSummaryInformationProperties} and {@link
  * #getDocumentSummaryInformationProperties} return singleton {@link
  * PropertyIDMap}s. An application that wants to extend these maps
- * should treat them as unmodifiable, copy them and modifiy the
+ * should treat them as unmodifiable, copy them and modify the
  * copies.
+ *
+ * Trying to modify the map directly will cause exceptions
+ * {@link UnsupportedOperationException} to be thrown.
  */
 public class PropertyIDMap implements Map<Long,String> {
 
@@ -455,6 +458,8 @@ public class PropertyIDMap implements Map<Long,String> {
     /**
      * Returns a property map, which is only used as a fallback, i.e. if available, the correct map
      * for {@link DocumentSummaryInformation} or {@link SummaryInformation} should be used.
+     *
+     * @return the resulting property map
      */
     public static synchronized PropertyIDMap getFallbackProperties() {
         if (fallbackProperties == null) {
@@ -490,11 +495,13 @@ public class PropertyIDMap implements Map<Long,String> {
 
     @Override
     public String put(Long key, String value) {
+        //noinspection ConstantConditions
         return idMap.put(key, value);
     }
 
     @Override
     public String remove(Object key) {
+        //noinspection ConstantConditions
         return idMap.remove(key);
     }
 

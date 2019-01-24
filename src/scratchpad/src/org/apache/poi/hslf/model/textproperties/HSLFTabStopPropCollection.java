@@ -55,7 +55,7 @@ public class HSLFTabStopPropCollection extends TextProp {
      * @param data the data stream
      * @param offset the offset within the data
      */
-    public void parseProperty(byte data[], int offset) {
+    public void parseProperty(byte[] data, int offset) {
         tabStops.addAll(readTabStops(new LittleEndianByteArrayInputStream(data, offset)));
     }
     
@@ -113,11 +113,7 @@ public class HSLFTabStopPropCollection extends TextProp {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result
-                + ((tabStops == null) ? 0 : tabStops.hashCode());
-        return result;
+        return 31 * super.hashCode() + tabStops.hashCode();
     }
 
     @Override

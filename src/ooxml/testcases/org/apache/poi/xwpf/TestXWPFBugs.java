@@ -23,18 +23,18 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 import javax.crypto.Cipher;
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.poi.POIDataSamples;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.poifs.crypt.CipherAlgorithm;
 import org.apache.poi.poifs.crypt.Decryptor;
 import org.apache.poi.poifs.crypt.EncryptionInfo;
 import org.apache.poi.poifs.crypt.HashAlgorithm;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.xmlbeans.XmlException;
@@ -43,14 +43,25 @@ import org.junit.Test;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.DocumentDocument;
 
 public class TestXWPFBugs {
+    private static final POIDataSamples samples = POIDataSamples.getDocumentInstance();
+
+    @Test
+    public void truncatedDocx() throws Exception {
+        try (InputStream fis = samples.openResourceAsStream("truncated62886.docx");
+            OPCPackage opc = OPCPackage.open(fis);
+            XWPFWordExtractor ext = new XWPFWordExtractor(opc)) {
+            assertNotNull(ext.getText());
+        }
+    }
+
     /**
      * A word document that's encrypted with non-standard
      * Encryption options, and no cspname section. See bug 53475
      */
     @Test
     public void bug53475NoCSPName() throws Exception {
-        File file = POIDataSamples.getDocumentInstance().getFile("bug53475-password-is-solrcell.docx");
-        NPOIFSFileSystem filesystem = new NPOIFSFileSystem(file, true);
+        File file = samples.getFile("bug53475-password-is-solrcell.docx");
+        POIFSFileSystem filesystem = new POIFSFileSystem(file, true);
 
         // Check the encryption details
         EncryptionInfo info = new EncryptionInfo(filesystem);
@@ -84,8 +95,8 @@ public class TestXWPFBugs {
         int maxKeyLen = Cipher.getMaxAllowedKeyLength("AES");
         Assume.assumeTrue("Please install JCE Unlimited Strength Jurisdiction Policy files for AES 256", maxKeyLen == 2147483647);
 
-        File file = POIDataSamples.getDocumentInstance().getFile("bug53475-password-is-pass.docx");
-        NPOIFSFileSystem filesystem = new NPOIFSFileSystem(file, true);
+        File file = samples.getFile("bug53475-password-is-pass.docx");
+        POIFSFileSystem filesystem = new POIFSFileSystem(file, true);
 
         // Check the encryption details
         EncryptionInfo info = new EncryptionInfo(filesystem);
@@ -115,10 +126,10 @@ public class TestXWPFBugs {
     
     @Test
     public void bug59058() throws IOException, XmlException {
-        String files[] = { "bug57031.docx", "bug59058.docx" };
+        String[] files = {"bug57031.docx", "bug59058.docx"};
         for (String f : files) {
-            ZipFile zf = new ZipFile(POIDataSamples.getDocumentInstance().getFile(f));
-            ZipEntry entry = zf.getEntry("word/document.xml");
+            ZipFile zf = new ZipFile(samples.getFile(f));
+            ZipArchiveEntry entry = zf.getEntry("word/document.xml");
             DocumentDocument document = DocumentDocument.Factory.parse(zf.getInputStream(entry));
             assertNotNull(document);
             zf.close();

@@ -132,7 +132,7 @@ public class CellReference {
         if (rowRef.length() == 0) {
             _rowIndex = -1;
         } else {
-            // throws NumberFormatException if rowRef is not convertable to an int
+            // throws NumberFormatException if rowRef is not convertible to an int
             _rowIndex = Integer.parseInt(rowRef)-1; // -1 to convert 1-based to zero-based
         }
     }
@@ -145,7 +145,7 @@ public class CellReference {
     }
 
     public CellReference(Cell cell) {
-        this(cell.getRowIndex(), cell.getColumnIndex(), false, false);
+        this(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), false, false);
     }
 
     public CellReference(int pRow, int pCol, boolean pAbsRow, boolean pAbsCol) {
@@ -336,10 +336,10 @@ public class CellReference {
             if(colStr.toUpperCase(Locale.ROOT).compareTo(lastCol) > 0) {
                 return false;
             }
-        } else {
+        } /*else {
             // apparent column name has less chars than max
             // no need to check range
-        }
+        }*/
         return true;
     }
 
@@ -350,8 +350,11 @@ public class CellReference {
      * @throws NumberFormatException if rowStr is not parseable as an integer
      */
     public static boolean isRowWithinRange(String rowStr, SpreadsheetVersion ssVersion) {
-        final int rowNum = Integer.parseInt(rowStr) - 1;
-        return isRowWithinRange(rowNum, ssVersion);
+        final long rowNum = Long.parseLong(rowStr) - 1;
+        if(rowNum > Integer.MAX_VALUE) {
+            return false;
+        }
+        return isRowWithinRange((int)rowNum, ssVersion);
     }
 
     /**
@@ -426,7 +429,7 @@ public class CellReference {
         //   AreaReference.separateAreaRefs()
         //   SheetNameFormatter.format() (inverse)
 
-        StringBuffer sb = new StringBuffer(indexOfSheetNameDelimiter);
+        StringBuilder sb = new StringBuilder(indexOfSheetNameDelimiter);
 
         for(int i=1; i<lastQuotePos; i++) { // Note boundaries - skip outer quotes
             char ch = reference.charAt(i);
@@ -495,11 +498,7 @@ public class CellReference {
 
     @Override
     public String toString() {
-        StringBuffer sb = new StringBuffer(64);
-        sb.append(getClass().getName()).append(" [");
-        sb.append(formatAsString());
-        sb.append("]");
-        return sb.toString();
+        return getClass().getName() + " [" + formatAsString() + "]";
     }
 
     /**

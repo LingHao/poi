@@ -18,7 +18,7 @@
 
 package org.apache.poi.xslf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -43,7 +43,7 @@ public class XSLFMetroShape {
     /*
      * parses the metro bytes to a XSLF shape
      */
-    public static Shape<?,?> parseShape(byte metroBytes[])
+    public static Shape<?,?> parseShape(byte[] metroBytes)
     throws InvalidFormatException, IOException, XmlException {
         PackagePartName shapePN = PackagingURIHelper.createPartName("/drs/shapexml.xml");
         OPCPackage pkg = null;

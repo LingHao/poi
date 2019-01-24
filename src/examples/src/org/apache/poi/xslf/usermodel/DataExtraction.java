@@ -33,7 +33,7 @@ import org.apache.poi.openxml4j.opc.PackagePart;
  */
 public final class DataExtraction {
 
-    public static void main(String args[]) throws IOException, OpenXML4JException {
+    public static void main(String[] args) throws IOException, OpenXML4JException {
 
         PrintStream out = System.out;
 
@@ -47,7 +47,7 @@ public final class DataExtraction {
             is.close();
 
             // Get the document's embedded files.
-            for (PackagePart p : ppt.getAllEmbedds()) {
+            for (PackagePart p : ppt.getAllEmbeddedParts()) {
                 String type = p.getContentType();
                 // typically file name
                 String name = p.getPartName().getName();

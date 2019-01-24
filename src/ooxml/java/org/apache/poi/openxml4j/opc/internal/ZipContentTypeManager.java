@@ -20,9 +20,9 @@ package org.apache.poi.openxml4j.opc.internal;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.StreamHelper;
@@ -57,26 +57,23 @@ public class ZipContentTypeManager extends ContentTypeManager {
 	@SuppressWarnings("resource")
     @Override
 	public boolean saveImpl(Document content, OutputStream out) {
-		ZipOutputStream zos = null;
-		if (out instanceof ZipOutputStream)
-			zos = (ZipOutputStream) out;
-		else
-			zos = new ZipOutputStream(out);
+		final ZipArchiveOutputStream zos = (out instanceof ZipArchiveOutputStream)
+				? (ZipArchiveOutputStream) out : new ZipArchiveOutputStream(out);
 
-		ZipEntry partEntry = new ZipEntry(CONTENT_TYPES_PART_NAME);
+		ZipArchiveEntry partEntry = new ZipArchiveEntry(CONTENT_TYPES_PART_NAME);
 		try {
 			// Referenced in ZIP
-			zos.putNextEntry(partEntry);
-			// Saving data in the ZIP file
-			if (!StreamHelper.saveXmlInStream(content, zos)) {
-			    return false;
+			zos.putArchiveEntry(partEntry);
+			try {
+				// Saving data in the ZIP file
+				return StreamHelper.saveXmlInStream(content, zos);
+			} finally {
+				zos.closeArchiveEntry();
 			}
-			zos.closeEntry();
 		} catch (IOException ioe) {
 			logger.log(POILogger.ERROR, "Cannot write: " + CONTENT_TYPES_PART_NAME
 					+ " in Zip !", ioe);
 			return false;
 		}
-		return true;
 	}
 }

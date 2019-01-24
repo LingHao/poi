@@ -17,10 +17,11 @@
 
 package org.apache.poi.hslf.record;
 
-import org.apache.poi.util.IOUtils;
-import org.apache.poi.util.LittleEndian;
 import java.io.IOException;
 import java.io.OutputStream;
+
+import org.apache.poi.util.IOUtils;
+import org.apache.poi.util.LittleEndian;
 
 /**
  * If we come across a record we don't know about, we create one of
@@ -30,11 +31,12 @@ import java.io.OutputStream;
  * @author Nick Burch
  */
 
+@SuppressWarnings("unused")
 public final class UnknownRecordPlaceholder extends RecordAtom
 {
 
 	//arbitrarily selected; may need to increase
-	private static final int MAX_RECORD_LENGTH = 1_000_000;
+	private static final int MAX_RECORD_LENGTH = 20_000_000;
 
 	private byte[] _contents;
 	private long _type;
@@ -56,7 +58,16 @@ public final class UnknownRecordPlaceholder extends RecordAtom
 	/**
 	 * Return the value we were given at creation
 	 */
-	public long getRecordType() { return _type; }
+	public long getRecordType() {
+		return _type;
+	}
+
+	/**
+	 * Return the value as enum we were given at creation
+	 */
+	public RecordTypes getRecordTypeEnum() {
+		return RecordTypes.forTypeID((int)_type);
+	}
 
 	/**
 	 * Write the contents of the record back, so it can be written

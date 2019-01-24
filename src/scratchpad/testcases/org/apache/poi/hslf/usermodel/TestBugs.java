@@ -56,7 +56,6 @@ import org.apache.poi.ddf.EscherColorRef;
 import org.apache.poi.ddf.EscherProperties;
 import org.apache.poi.hslf.HSLFTestDataSamples;
 import org.apache.poi.hslf.exceptions.OldPowerPointFormatException;
-import org.apache.poi.hslf.extractor.PowerPointExtractor;
 import org.apache.poi.hslf.model.HeadersFooters;
 import org.apache.poi.hslf.record.DocInfoListContainer;
 import org.apache.poi.hslf.record.Document;
@@ -68,11 +67,12 @@ import org.apache.poi.hslf.record.TextHeaderAtom;
 import org.apache.poi.hslf.record.VBAInfoAtom;
 import org.apache.poi.hslf.record.VBAInfoContainer;
 import org.apache.poi.hssf.usermodel.DummyGraphics2d;
-import org.apache.poi.poifs.filesystem.NPOIFSFileSystem;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.poifs.macros.VBAMacroReader;
 import org.apache.poi.sl.draw.DrawFactory;
 import org.apache.poi.sl.draw.DrawPaint;
 import org.apache.poi.sl.draw.DrawTextParagraph;
+import org.apache.poi.sl.extractor.SlideShowExtractor;
 import org.apache.poi.sl.usermodel.ColorStyle;
 import org.apache.poi.sl.usermodel.PaintStyle;
 import org.apache.poi.sl.usermodel.PaintStyle.SolidPaint;
@@ -130,14 +130,14 @@ public final class TestBugs {
         assertNotNull(notes);
         txrun = notes.getTextParagraphs().get(0);
         assertEquals("Notes-1", HSLFTextParagraph.getRawText(txrun));
-        assertEquals(false, txrun.get(0).getTextRuns().get(0).isBold());
+        assertFalse(txrun.get(0).getTextRuns().get(0).isBold());
 
         //notes for the second slide are in bold
         notes = ppt.getSlides().get(1).getNotes();
         assertNotNull(notes);
         txrun = notes.getTextParagraphs().get(0);
         assertEquals("Notes-2", HSLFTextParagraph.getRawText(txrun));
-        assertEquals(true, txrun.get(0).getTextRuns().get(0).isBold());
+        assertTrue(txrun.get(0).getTextRuns().get(0).isBold());
 
         ppt.close();
     }
@@ -151,14 +151,14 @@ public final class TestBugs {
 
         //map slide number and starting phrase of its notes
         Map<Integer, String> notesMap = new HashMap<>();
-        notesMap.put(Integer.valueOf(4), "For  decades before calculators");
-        notesMap.put(Integer.valueOf(5), "Several commercial applications");
-        notesMap.put(Integer.valueOf(6), "There are three variations of LNS that are discussed here");
-        notesMap.put(Integer.valueOf(7), "Although multiply and square root are easier");
-        notesMap.put(Integer.valueOf(8), "The bus Z is split into Z_H and Z_L");
+        notesMap.put(4, "For  decades before calculators");
+        notesMap.put(5, "Several commercial applications");
+        notesMap.put(6, "There are three variations of LNS that are discussed here");
+        notesMap.put(7, "Although multiply and square root are easier");
+        notesMap.put(8, "The bus Z is split into Z_H and Z_L");
 
         for (HSLFSlide slide : ppt.getSlides()) {
-            Integer slideNumber = Integer.valueOf(slide.getSlideNumber());
+            Integer slideNumber = slide.getSlideNumber();
             HSLFNotes notes = slide.getNotes();
             if (notesMap.containsKey(slideNumber)){
                 assertNotNull(notes);
@@ -411,7 +411,6 @@ public final class TestBugs {
 
     /**
      * PowerPoint 95 files should throw a more helpful exception
-     * @throws IOException
      */
     @Test(expected=OldPowerPointFormatException.class)
     public void bug41711() throws IOException {
@@ -580,20 +579,20 @@ public final class TestBugs {
 
     @Test
     public void bug47261() throws IOException {
-        HSLFSlideShow ppt = open("bug47261.ppt");
-        ppt.removeSlide(0);
-        ppt.createSlide();
-        HSLFTestDataSamples.writeOutAndReadBack(ppt).close();
-        ppt.close();
+        try (HSLFSlideShow ppt = open("bug47261.ppt")) {
+            ppt.removeSlide(0);
+            ppt.createSlide();
+            HSLFTestDataSamples.writeOutAndReadBack(ppt).close();
+        }
     }
 
     @Test
     public void bug56240() throws IOException {
-        HSLFSlideShow ppt = open("bug56240.ppt");
-        int slideCnt = ppt.getSlides().size();
-        assertEquals(105, slideCnt);
-        HSLFTestDataSamples.writeOutAndReadBack(ppt).close();
-        ppt.close();
+        try (HSLFSlideShow ppt = open("bug56240.ppt")) {
+            int slideCnt = ppt.getSlides().size();
+            assertEquals(105, slideCnt);
+            HSLFTestDataSamples.writeOutAndReadBack(ppt).close();
+        }
     }
 
     @Test
@@ -602,18 +601,18 @@ public final class TestBugs {
         HSLFAutoShape as = (HSLFAutoShape)ppt.getSlides().get(0).getShapes().get(0);
         AbstractEscherOptRecord opt = as.getEscherOptRecord();
         EscherArrayProperty ep = HSLFShape.getEscherProperty(opt, EscherProperties.FILL__SHADECOLORS);
-        double exp[][] = {
-            // r, g, b, position
-            { 94, 158, 255, 0 },
-            { 133, 194, 255, 0.399994 },
-            { 196, 214, 235, 0.699997 },
-            { 255, 235, 250, 1 }
+        double[][] exp = {
+                // r, g, b, position
+                {94, 158, 255, 0},
+                {133, 194, 255, 0.399994},
+                {196, 214, 235, 0.699997},
+                {255, 235, 250, 1}
         };
 
         int i = 0;
-        for (byte data[] : ep) {
+        for (byte[] data : ep) {
             EscherColorRef ecr = new EscherColorRef(data, 0, 4);
-            int rgb[] = ecr.getRGB();
+            int[] rgb = ecr.getRGB();
             double pos = Units.fixedPointToDouble(LittleEndian.getInt(data, 4));
             assertEquals((int)exp[i][0], rgb[0]);
             assertEquals((int)exp[i][1], rgb[1]);
@@ -631,7 +630,7 @@ public final class TestBugs {
 
     @Test
     public void bug45124() throws IOException {
-        SlideShow<?,?> ppt = open("bug45124.ppt");
+        HSLFSlideShow ppt = open("bug45124.ppt");
         Slide<?,?> slide1 = ppt.getSlides().get(1);
 
         TextBox<?,?> res = slide1.createTextBox();
@@ -646,7 +645,7 @@ public final class TestBugs {
 
         tp.setBulletStyle(Color.red, 'A');
 
-        SlideShow<?,?> ppt2 = HSLFTestDataSamples.writeOutAndReadBack((HSLFSlideShow)ppt);
+        SlideShow<?,?> ppt2 = HSLFTestDataSamples.writeOutAndReadBack(ppt);
         ppt.close();
 
         res = (TextBox<?,?>)ppt2.getSlides().get(1).getShapes().get(1);
@@ -797,21 +796,21 @@ public final class TestBugs {
 
     @Test
     public void bug58718() throws IOException {
-        String files[] = { "bug58718_008524.ppt","bug58718_008558.ppt","bug58718_349008.ppt","bug58718_008495.ppt",  }; 
+        String[] files = {"bug58718_008524.ppt", "bug58718_008558.ppt", "bug58718_349008.ppt", "bug58718_008495.ppt",};
         for (String f : files) {
             File sample = HSLFTestDataSamples.getSampleFile(f);
-            PowerPointExtractor ex = new PowerPointExtractor(sample.getAbsolutePath());
-            assertNotNull(ex.getText());
-            ex.close();
+            try (SlideShowExtractor ex = new SlideShowExtractor(SlideShowFactory.create(sample))) {
+                 assertNotNull(ex.getText());
+             }
         }
     }
 
     @Test
     public void bug58733() throws IOException {
         File sample = HSLFTestDataSamples.getSampleFile("bug58733_671884.ppt");
-        PowerPointExtractor ex = new PowerPointExtractor(sample.getAbsolutePath());
-        assertNotNull(ex.getText());
-        ex.close();
+        try (SlideShowExtractor ex = new SlideShowExtractor(SlideShowFactory.create(sample))) {
+            assertNotNull(ex.getText());
+        }
     }
 
     @Test
@@ -878,15 +877,15 @@ public final class TestBugs {
             @Override
             public void write(int b) throws IOException {}
         };
-        
-        final boolean found[] = { false }; 
+
+        final boolean[] found = {false};
         DummyGraphics2d dgfx = new DummyGraphics2d(new PrintStream(nullOutput)){
             @Override
             public void drawString(AttributedCharacterIterator iterator, float x, float y) {
                 // For the test file, common sl draws textruns one by one and not mixed
                 // so we evaluate the whole iterator
                 Map<Attribute, Object> attributes = null;
-                StringBuffer sb = new StringBuffer();
+                StringBuilder sb = new StringBuilder();
                 
                 for (char c = iterator.first();
                         c != CharacterIterator.DONE;
@@ -993,10 +992,10 @@ public final class TestBugs {
     //It isn't pretty, but it works...
     private Map<String, String> getMacrosFromHSLF(String fileName) throws IOException {
         InputStream is = null;
-        NPOIFSFileSystem npoifs = null;
+        POIFSFileSystem npoifs = null;
         try {
             is = new FileInputStream(POIDataSamples.getSlideShowInstance().getFile(fileName));
-            npoifs = new NPOIFSFileSystem(is);
+            npoifs = new POIFSFileSystem(is);
             //TODO: should we run the VBAMacroReader on this npoifs?
             //TBD: We know that ppt typically don't store macros in the regular place,
             //but _can_ they?
@@ -1010,11 +1009,8 @@ public final class TestBugs {
             long persistId = vbaAtom.getPersistIdRef();
             for (HSLFObjectData objData : ppt.getEmbeddedObjects()) {
                 if (objData.getExOleObjStg().getPersistId() == persistId) {
-                    VBAMacroReader mr = new VBAMacroReader(objData.getInputStream());
-                    try {
+                    try (VBAMacroReader mr = new VBAMacroReader(objData.getInputStream())) {
                         return mr.readMacros();
-                    } finally {
-                        mr.close();
                     }
                 }
             }

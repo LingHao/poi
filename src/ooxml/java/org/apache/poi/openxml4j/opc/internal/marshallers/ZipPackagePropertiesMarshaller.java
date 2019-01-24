@@ -19,9 +19,9 @@ package org.apache.poi.openxml4j.opc.internal.marshallers;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.StreamHelper;
@@ -37,27 +37,27 @@ public final class ZipPackagePropertiesMarshaller extends PackagePropertiesMarsh
 	@Override
 	public boolean marshall(PackagePart part, OutputStream out)
 			throws OpenXML4JException {
-		if (!(out instanceof ZipOutputStream)) {
+		if (!(out instanceof ZipArchiveOutputStream)) {
 			throw new IllegalArgumentException("ZipOutputStream expected!");
 		}
-		ZipOutputStream zos = (ZipOutputStream) out;
+		ZipArchiveOutputStream zos = (ZipArchiveOutputStream) out;
 
 		// Saving the part in the zip file
-		ZipEntry ctEntry = new ZipEntry(ZipHelper
+		ZipArchiveEntry ctEntry = new ZipArchiveEntry(ZipHelper
 				.getZipItemNameFromOPCName(part.getPartName().getURI()
 						.toString()));
 		try {
 			// Save in ZIP
-			zos.putNextEntry(ctEntry); // Add entry in ZIP
-			super.marshall(part, out); // Marshall the properties inside a XML
-			// Document
-			if (!StreamHelper.saveXmlInStream(xmlDoc, out)) {
-				return false;
+			zos.putArchiveEntry(ctEntry); // Add entry in ZIP
+			try {
+				super.marshall(part, out); // Marshall the properties inside a XML
+				// Document
+				return StreamHelper.saveXmlInStream(xmlDoc, out);
+			} finally {
+				zos.closeArchiveEntry();
 			}
-			zos.closeEntry();
 		} catch (IOException e) {
 			throw new OpenXML4JException(e.getLocalizedMessage(), e);
 		}
-		return true;
 	}
 }

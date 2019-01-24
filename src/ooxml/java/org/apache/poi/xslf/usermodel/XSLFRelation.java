@@ -16,18 +16,22 @@
 ==================================================================== */
 package org.apache.poi.xslf.usermodel;
 
+import static org.apache.poi.openxml4j.opc.PackageRelationshipTypes.IMAGE_PART;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.poi.POIXMLDocument;
-import org.apache.poi.POIXMLDocumentPart;
-import org.apache.poi.POIXMLRelation;
+import org.apache.poi.ooxml.POIXMLDocument;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLRelation;
 import org.apache.poi.sl.usermodel.PictureData.PictureType;
 import org.apache.poi.util.Beta;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+@SuppressWarnings({"unused", "WeakerAccess"})
 @Beta
-public class XSLFRelation extends POIXMLRelation {
+public final class XSLFRelation extends POIXMLRelation {
+    /* package */ static final String NS_DRAWINGML = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
     /**
      * A map to lookup POIXMLRelation by its relation type
@@ -139,6 +143,8 @@ public class XSLFRelation extends POIXMLRelation {
             null
     );
 
+    // this is not the same as in XSSFRelation.WORKBOOK, as it is usually used by embedded charts
+    // referencing the original embedded excel workbook
     public static final XSLFRelation WORKBOOK = new XSLFRelation(
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             POIXMLDocument.PACK_OBJECT_REL_TYPE,
@@ -155,80 +161,87 @@ public class XSLFRelation extends POIXMLRelation {
 
     public static final XSLFRelation IMAGE_EMF = new XSLFRelation(
             PictureType.EMF.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.emf",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_WMF = new XSLFRelation(
             PictureType.WMF.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.wmf",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_PICT = new XSLFRelation(
             PictureType.PICT.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.pict",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_JPEG = new XSLFRelation(
             PictureType.JPEG.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.jpeg",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_PNG = new XSLFRelation(
             PictureType.PNG.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.png",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_DIB = new XSLFRelation(
             PictureType.DIB.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.dib",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_GIF = new XSLFRelation(
             PictureType.GIF.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.gif",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_TIFF = new XSLFRelation(
             PictureType.TIFF.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.tiff",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_EPS = new XSLFRelation(
             PictureType.EPS.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.eps",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_BMP = new XSLFRelation(
             PictureType.BMP.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.bmp",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_WPG = new XSLFRelation(
             PictureType.WPG.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.wpg",
             XSLFPictureData.class
     );
     public static final XSLFRelation IMAGE_WDP = new XSLFRelation(
             PictureType.WDP.contentType,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             "/ppt/media/image#.wdp",
+            XSLFPictureData.class
+    );
+
+    public static final XSLFRelation IMAGE_SVG = new XSLFRelation(
+            PictureType.SVG.contentType,
+            IMAGE_PART,
+            "/ppt/media/image#.svg",
             XSLFPictureData.class
     );
 
     public static final XSLFRelation IMAGES = new XSLFRelation(
             null,
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+            IMAGE_PART,
             null,
             XSLFPictureData.class
     );
@@ -245,6 +258,13 @@ public class XSLFRelation extends POIXMLRelation {
             "http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject",
             "/ppt/embeddings/oleObject#.bin",
             XSLFObjectData.class
+    );
+
+    public static final XSLFRelation FONT = new XSLFRelation(
+            "application/x-fontdata",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/font",
+            "/ppt/fonts/font#.fntdata",
+            XSLFFontData.class
     );
 
 

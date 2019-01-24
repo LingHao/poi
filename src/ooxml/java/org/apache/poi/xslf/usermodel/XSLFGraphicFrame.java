@@ -24,7 +24,7 @@ import java.io.IOException;
 
 import javax.xml.namespace.QName;
 
-import org.apache.poi.POIXMLException;
+import org.apache.poi.ooxml.POIXMLException;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.PackageRelationship;
@@ -87,7 +87,8 @@ public class XSLFGraphicFrame extends XSLFShape implements GraphicalFrame<XSLFSh
 
 
     static XSLFGraphicFrame create(CTGraphicalObjectFrame shape, XSLFSheet sheet){
-        switch (getUri(shape)) {
+        final String uri = getUri(shape);
+        switch (uri == null ? "" : uri) {
         case XSLFTable.TABLE_URI:
             return new XSLFTable(shape, sheet);
         case XSLFObjectShape.OLE_URI:
@@ -191,9 +192,7 @@ public class XSLFGraphicFrame extends XSLFShape implements GraphicalFrame<XSLFSh
                 chartCopy.importContent(srcChart);
                 chartCopy.setWorkbook(srcChart.getWorkbook());
                 c.setAttributeText(idQualifiedName, slide.getRelationId(chartCopy));
-            } catch (InvalidFormatException e) {
-                throw new POIXMLException(e);
-            } catch (IOException e) {
+            } catch (InvalidFormatException | IOException e) {
                 throw new POIXMLException(e);
             }
             c.dispose();

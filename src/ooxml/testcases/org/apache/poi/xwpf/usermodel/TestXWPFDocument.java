@@ -30,8 +30,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.poi.POIDataSamples;
-import org.apache.poi.POIXMLDocumentPart;
-import org.apache.poi.POIXMLProperties;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackageAccess;
@@ -71,34 +71,34 @@ public final class TestXWPFDocument {
     @Test
     public void testOpen() throws Exception {
         // Simple file
-        XWPFDocument xml1 = XWPFTestDataSamples.openSampleDocument("sample.docx");
-        // Check it has key parts
-        assertNotNull(xml1.getDocument());
-        assertNotNull(xml1.getDocument().getBody());
-        assertNotNull(xml1.getStyle());
-        xml1.close();
+        try (XWPFDocument xml1 = XWPFTestDataSamples.openSampleDocument("sample.docx")) {
+            // Check it has key parts
+            assertNotNull(xml1.getDocument());
+            assertNotNull(xml1.getDocument().getBody());
+            assertNotNull(xml1.getStyle());
+        }
 
         // Complex file
-        XWPFDocument xml2 = XWPFTestDataSamples.openSampleDocument("IllustrativeCases.docx");
-        assertNotNull(xml2.getDocument());
-        assertNotNull(xml2.getDocument().getBody());
-        assertNotNull(xml2.getStyle());
-        xml2.close();
+        try (XWPFDocument xml2 = XWPFTestDataSamples.openSampleDocument("IllustrativeCases.docx")) {
+            assertNotNull(xml2.getDocument());
+            assertNotNull(xml2.getDocument().getBody());
+            assertNotNull(xml2.getStyle());
+        }
     }
 
     @Test
     public void testMetadataBasics() throws IOException {
-        XWPFDocument xml = XWPFTestDataSamples.openSampleDocument("sample.docx");
-        assertNotNull(xml.getProperties().getCoreProperties());
-        assertNotNull(xml.getProperties().getExtendedProperties());
+        try (XWPFDocument xml = XWPFTestDataSamples.openSampleDocument("sample.docx")) {
+            assertNotNull(xml.getProperties().getCoreProperties());
+            assertNotNull(xml.getProperties().getExtendedProperties());
 
-        assertEquals("Microsoft Office Word", xml.getProperties().getExtendedProperties().getUnderlyingProperties().getApplication());
-        assertEquals(1315, xml.getProperties().getExtendedProperties().getUnderlyingProperties().getCharacters());
-        assertEquals(10, xml.getProperties().getExtendedProperties().getUnderlyingProperties().getLines());
+            assertEquals("Microsoft Office Word", xml.getProperties().getExtendedProperties().getUnderlyingProperties().getApplication());
+            assertEquals(1315, xml.getProperties().getExtendedProperties().getUnderlyingProperties().getCharacters());
+            assertEquals(10, xml.getProperties().getExtendedProperties().getUnderlyingProperties().getLines());
 
-        assertEquals(null, xml.getProperties().getCoreProperties().getTitle());
-        assertEquals(null, xml.getProperties().getCoreProperties().getUnderlyingProperties().getSubjectProperty().getValue());
-        xml.close();
+            assertEquals(null, xml.getProperties().getCoreProperties().getTitle());
+            assertFalse(xml.getProperties().getCoreProperties().getUnderlyingProperties().getSubjectProperty().isPresent());
+        }
     }
 
     @Test
@@ -112,7 +112,7 @@ public final class TestXWPFDocument {
         assertEquals(0, xml.getProperties().getExtendedProperties().getUnderlyingProperties().getLines());
 
         assertEquals(" ", xml.getProperties().getCoreProperties().getTitle());
-        assertEquals(" ", xml.getProperties().getCoreProperties().getUnderlyingProperties().getSubjectProperty().getValue());
+        assertEquals(" ", xml.getProperties().getCoreProperties().getUnderlyingProperties().getSubjectProperty().get());
         xml.close();
     }
 
@@ -402,6 +402,14 @@ public final class TestXWPFDocument {
         assertEquals(100, settings.getZoomPercent());
         settings.setZoomPercent(50);
         assertEquals(50, settings.getZoomPercent());
+        
+        assertEquals(false, settings.getEvenAndOddHeadings());
+        settings.setEvenAndOddHeadings(true);
+        assertEquals(true, settings.getEvenAndOddHeadings());
+
+        assertEquals(false, settings.getMirrorMargins());
+        settings.setMirrorMargins(true);
+        assertEquals(true, settings.getMirrorMargins());
 
         XWPFDocument doc = new XWPFDocument();
         assertEquals(100, doc.getZoomPercent());
@@ -411,6 +419,14 @@ public final class TestXWPFDocument {
 
         doc.setZoomPercent(200);
         assertEquals(200, doc.getZoomPercent());
+
+        assertEquals(false, doc.getEvenAndOddHeadings());
+        doc.setEvenAndOddHeadings(true);
+        assertEquals(true, doc.getEvenAndOddHeadings());
+
+        assertEquals(false, doc.getMirrorMargins());
+        doc.setMirrorMargins(true);
+        assertEquals(true, doc.getMirrorMargins());
 
         XWPFDocument back = XWPFTestDataSamples.writeOutAndReadBack(doc);
         assertEquals(200, back.getZoomPercent());

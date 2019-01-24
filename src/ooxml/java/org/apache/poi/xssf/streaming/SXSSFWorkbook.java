@@ -31,13 +31,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.compress.archivers.zip.Zip64Mode;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.openxml4j.util.ZipArchiveThresholdInputStream;
 import org.apache.poi.openxml4j.util.ZipEntrySource;
 import org.apache.poi.openxml4j.util.ZipFileZipEntrySource;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.formula.udf.UDFFinder;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -109,6 +111,8 @@ public class SXSSFWorkbook implements Workbook {
      * shared string table - a cache of strings in this workbook
      */
     private final SharedStringsTable _sharedStringSource;
+
+    private Zip64Mode zip64Mode = Zip64Mode.AsNeeded;
 
     /**
      * Construct a new workbook with default row window size
@@ -243,6 +247,7 @@ public class SXSSFWorkbook implements Workbook {
             }
         }
     }
+
     /**
      * Construct an empty workbook and specify the window for row access.
      * <p>
@@ -284,6 +289,16 @@ public class SXSSFWorkbook implements Workbook {
     }
 
     /**
+     * @param zip64Mode {@link Zip64Mode}
+     *
+     * @since 4.1.0
+     */
+    @Beta
+    public void setZip64Mode(Zip64Mode zip64Mode) {
+        this.zip64Mode = zip64Mode;
+    }
+
+    /**
      * Get whether temp files should be compressed.
      *
      * @return whether to compress temp files
@@ -291,6 +306,7 @@ public class SXSSFWorkbook implements Workbook {
     public boolean isCompressTempFiles() {
         return _compressTmpFiles;
     }
+
     /**
      * Set whether temp files should be compressed.
      * <p>
@@ -369,13 +385,22 @@ public class SXSSFWorkbook implements Workbook {
     }
 
     protected void injectData(ZipEntrySource zipEntrySource, OutputStream out) throws IOException {
+        ZipArchiveOutputStream zos = new ZipArchiveOutputStream(out);
+        zos.setUseZip64(zip64Mode);
         try {
-            try (ZipOutputStream zos = new ZipOutputStream(out)) {
-                Enumeration<? extends ZipEntry> en = zipEntrySource.getEntries();
-                while (en.hasMoreElements()) {
-                    ZipEntry ze = en.nextElement();
-                    zos.putNextEntry(new ZipEntry(ze.getName()));
-                    InputStream is = zipEntrySource.getInputStream(ze);
+            Enumeration<? extends ZipArchiveEntry> en = zipEntrySource.getEntries();
+            while (en.hasMoreElements()) {
+                ZipArchiveEntry ze = en.nextElement();
+                ZipArchiveEntry zeOut = new ZipArchiveEntry(ze.getName());
+                zeOut.setSize(ze.getSize());
+                zeOut.setTime(ze.getTime());
+                zos.putArchiveEntry(zeOut);
+                try (final InputStream is = zipEntrySource.getInputStream(ze)) {
+                    if (is instanceof ZipArchiveThresholdInputStream) {
+                        // #59743 - disable Threshold handling for SXSSF copy
+                        // as users tend to put too much repetitive data in when using SXSSF :)
+                        ((ZipArchiveThresholdInputStream)is).setGuardState(false);
+                    }
                     XSSFSheet xSheet = getSheetFromZipEntryName(ze.getName());
                     // See bug 56557, we should not inject data into the special ChartSheets
                     if (xSheet != null && !(xSheet instanceof XSSFChartSheet)) {
@@ -386,10 +411,12 @@ public class SXSSFWorkbook implements Workbook {
                     } else {
                         IOUtils.copy(is, zos);
                     }
-                    is.close();
+                } finally {
+                    zos.closeArchiveEntry();
                 }
             }
         } finally {
+            zos.finish();
             zipEntrySource.close();
         }
     }
@@ -677,9 +704,8 @@ public class SXSSFWorkbook implements Workbook {
      */
     @Override
     @NotImplemented
-    public Sheet cloneSheet(int sheetNum)
-    {
-        throw new RuntimeException("NotImplemented");
+    public Sheet cloneSheet(int sheetNum) {
+        throw new RuntimeException("Not Implemented");
     }
 
 
@@ -918,8 +944,10 @@ public class SXSSFWorkbook implements Workbook {
             }
 
             //Substitute the template entries with the generated sheet data files
-            final ZipEntrySource source = new ZipFileZipEntrySource(new ZipFile(tmplFile));
-            injectData(source, stream);
+            try (ZipSecureFile zf = new ZipSecureFile(tmplFile);
+                 ZipFileZipEntrySource source = new ZipFileZipEntrySource(zf)) {
+                injectData(source, stream);
+            }
         } finally {
             deleted = tmplFile.delete();
         }
@@ -1277,7 +1305,7 @@ public class SXSSFWorkbook implements Workbook {
     @Override
     @NotImplemented
     public int linkExternalWorkbook(String name, Workbook workbook) {
-        throw new RuntimeException("NotImplemented");
+        throw new RuntimeException("Not Implemented");
     }
     
     /**

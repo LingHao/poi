@@ -47,6 +47,7 @@ import org.apache.poi.sl.draw.DrawFactory;
 import org.apache.poi.sl.usermodel.PictureData.PictureType;
 import org.apache.poi.sl.usermodel.Slide;
 import org.apache.poi.sl.usermodel.SlideShow;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -57,6 +58,11 @@ import org.junit.Test;
  */
 public final class TestPicture {
     private static POIDataSamples _slTests = POIDataSamples.getSlideShowInstance();
+
+    @BeforeClass
+    public static void disableImageIOCache() {
+        ImageIO.setUseCache(false);
+    }
 
     /**
      * Test that the reference count of a blip is incremented every time the picture is inserted.
@@ -167,12 +173,12 @@ public final class TestPicture {
     @Ignore("Just for visual validation - antialiasing is different on various systems")
     public void bug54541()
     throws IOException, ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException {
-        String files[] = {
+        String[] files = {
 //            "sample_pptx_grouping_issues.pptx",
 //            "54542_cropped_bitmap.pptx",
 //            "54541_cropped_bitmap.ppt",
 //            "54541_cropped_bitmap2.ppt",
-            "alterman_security.ppt",
+                "alterman_security.ppt",
 //            "alterman_security3.pptx",
         };
         
@@ -204,7 +210,6 @@ public final class TestPicture {
                 } else {
                     BufferedImage img = new BufferedImage(pg.width, pg.height, BufferedImage.TYPE_INT_ARGB);
                     Graphics2D graphics = img.createGraphics();
-                    DrawFactory.getInstance(graphics).fixFonts(graphics);
                     slide.draw(graphics);
                     graphics.setColor(Color.BLACK);
                     graphics.setStroke(new BasicStroke(1));

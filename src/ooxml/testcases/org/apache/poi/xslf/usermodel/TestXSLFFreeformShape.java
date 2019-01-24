@@ -17,15 +17,24 @@
 package org.apache.poi.xslf.usermodel;
 
 
-import static org.junit.Assert.assertEquals;
-import static org.apache.poi.xslf.usermodel.TestXSLFSimpleShape.getSpPr;
+import org.apache.poi.sl.draw.SLGraphics;
+import org.junit.Test;
+import org.openxmlformats.schemas.presentationml.x2006.main.CTGroupShape;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Shape;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
+import java.awt.geom.PathIterator;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 
-import org.junit.Test;
+import static org.apache.poi.xslf.usermodel.TestXSLFSimpleShape.getSpPr;
+import static org.junit.Assert.assertEquals;
 
 public class TestXSLFFreeformShape {
 
@@ -51,5 +60,59 @@ public class TestXSLFFreeformShape {
         assertEquals(getSpPr(shape1).getCustGeom().toString(), getSpPr(shape2).getCustGeom().toString());
         
         ppt.close();
+    }
+
+    @Test
+    public void testZeroWidth() throws IOException {
+        // see #61633
+        try (XMLSlideShow ppt = new XMLSlideShow()) {
+            XSLFSlide slide = ppt.createSlide();
+            XSLFFreeformShape shape1 = slide.createFreeform();
+            Path2D.Double path1 = new Path2D.Double(new Line2D.Double(100, 150, 100, 300));
+            shape1.setPath(path1);
+            shape1.setLineColor(Color.BLUE);
+            shape1.setLineWidth(1);
+
+            BufferedImage img = new BufferedImage(300, 300, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D graphics = img.createGraphics();
+            try {
+                // previously we used Mockito here, but since JDK 11 mocking the Graphics2D does
+                // not work any longer
+                Graphics2D graphicsMock = new SLGraphics(new XSLFGroupShape(CTGroupShape.Factory.newInstance(), slide)) {
+                    boolean called;
+
+                    @Override
+                    public void draw(Shape shape) {
+                        if(called) {
+                            throw new IllegalStateException("Should only be called once, but was called a second time");
+                        }
+                        called = true;
+
+                        if(!(shape instanceof Path2D.Double)) {
+                            throw new IllegalStateException("Expecting a shape of type Path2D.Double, but had " + shape.getClass());
+                        }
+
+                        Path2D.Double actual = (Path2D.Double) shape;
+                        PathIterator pi = actual.getPathIterator(new AffineTransform());
+                        comparePoint(pi, PathIterator.SEG_MOVETO, 100, 150);
+                        pi.next();
+                        comparePoint(pi, PathIterator.SEG_LINETO, 100, 300);
+
+                        super.draw(shape);
+                    }
+                };
+                slide.draw(graphicsMock);
+            } finally {
+                graphics.dispose();
+            }
+        }
+    }
+
+    private void comparePoint(PathIterator pi, int type, double x0, double y0) {
+        double[] points = new double[6];
+        int piType = pi.currentSegment(points);
+        assertEquals(type, piType);
+        assertEquals(x0, points[0], 0);
+        assertEquals(y0, points[1], 0);
     }
 }

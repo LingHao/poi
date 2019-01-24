@@ -29,14 +29,18 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.poi.EncryptedDocumentException;
-import org.apache.poi.POIOLE2TextExtractor;
-import org.apache.poi.POITextExtractor;
-import org.apache.poi.extractor.ExtractorFactory;
+import org.apache.poi.extractor.POIOLE2TextExtractor;
+import org.apache.poi.extractor.POITextExtractor;
+import org.apache.poi.ooxml.extractor.ExtractorFactory;
 import org.apache.poi.hpsf.extractor.HPSFPropertiesExtractor;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
 import org.apache.poi.util.IOUtils;
 import org.apache.xmlbeans.XmlException;
 
+/**
+ * Base class with things that can be run for any supported file handler
+ * in the integration tests, mostly text-extraction related at the moment.
+ */
 public abstract class AbstractFileHandler implements FileHandler {
     public static final Set<String> EXPECTED_EXTRACTOR_FAILURES = new HashSet<>();
     static {
@@ -79,26 +83,26 @@ public abstract class AbstractFileHandler implements FileHandler {
         long modified = file.lastModified();
         
         POITextExtractor extractor = null;
-        try  {
+        try {
             extractor = ExtractorFactory.createExtractor(file);
             assertNotNull("Should get a POITextExtractor but had none for file " + file, extractor);
 
             assertNotNull("Should get some text but had none for file " + file, extractor.getText());
-            
+
             // also try metadata
             @SuppressWarnings("resource")
             POITextExtractor metadataExtractor = extractor.getMetadataTextExtractor();
             assertNotNull(metadataExtractor.getText());
 
-            assertFalse("Expected Extraction to fail for file " + file + " and handler " + this + ", but did not fail!", 
+            assertFalse("Expected Extraction to fail for file " + file + " and handler " + this + ", but did not fail!",
                     EXPECTED_EXTRACTOR_FAILURES.contains(file.getParentFile().getName() + "/" + file.getName()));
-            
+
             assertEquals("File should not be modified by extractor", length, file.length());
             assertEquals("File should not be modified by extractor", modified, file.lastModified());
-            
+
             handleExtractingAsStream(file);
-            
-            if(extractor instanceof POIOLE2TextExtractor) {
+
+            if (extractor instanceof POIOLE2TextExtractor) {
                 try (HPSFPropertiesExtractor hpsfExtractor = new HPSFPropertiesExtractor((POIOLE2TextExtractor) extractor)) {
                     assertNotNull(hpsfExtractor.getDocumentSummaryInformationText());
                     assertNotNull(hpsfExtractor.getSummaryInformationText());
@@ -115,6 +119,10 @@ public abstract class AbstractFileHandler implements FileHandler {
             String msg = "org.apache.poi.EncryptedDocumentException: Export Restrictions in place - please install JCE Unlimited Strength Jurisdiction Policy files";
             assumeFalse(msg.equals(e.getMessage()));
             throw e;
+        } catch (IllegalStateException e) {
+            if (!e.getMessage().contains("POI Scratchpad jar missing") || !Boolean.getBoolean("scratchpad.ignore")) {
+                throw e;
+            }
         } finally {
             IOUtils.closeQuietly(extractor);
         }

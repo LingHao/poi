@@ -24,8 +24,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.poi.POIXMLDocumentPart;
-import org.apache.poi.POIXMLException;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLException;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.sl.image.ImageHeaderBitmap;
 import org.apache.poi.sl.image.ImageHeaderEMF;
@@ -114,7 +114,7 @@ public final class XSLFPictureData extends POIXMLDocumentPart implements Picture
     @Override
     public byte[] getChecksum() {
         cacheProperties();
-        byte cs[] = new byte[LittleEndianConsts.LONG_SIZE];
+        byte[] cs = new byte[LittleEndianConsts.LONG_SIZE];
         LittleEndian.putLong(cs,0,checksum);
         return cs;
     }
@@ -139,7 +139,7 @@ public final class XSLFPictureData extends POIXMLDocumentPart implements Picture
      */
     protected void cacheProperties() {
         if (origSize == null || checksum == null) {
-            byte data[] = getData();
+            byte[] data = getData();
             checksum = IOUtils.calculateChecksum(data);
             
             PictureType pt = getType();
@@ -218,6 +218,8 @@ public final class XSLFPictureData extends POIXMLDocumentPart implements Picture
             return PictureType.WDP;
         } else if (XSLFRelation.IMAGE_TIFF.getContentType().equals(ct)) {
             return PictureType.TIFF;
+        } else if (XSLFRelation.IMAGE_SVG.getContentType().equals(ct)) {
+            return PictureType.SVG;
         } else {
             return null;
         }
@@ -237,6 +239,7 @@ public final class XSLFPictureData extends POIXMLDocumentPart implements Picture
             case WPG: return XSLFRelation.IMAGE_WPG;
             case WDP: return XSLFRelation.IMAGE_WDP;
             case TIFF: return XSLFRelation.IMAGE_TIFF;
+            case SVG: return XSLFRelation.IMAGE_SVG;
             default: return null;
         }
     }

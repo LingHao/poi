@@ -76,6 +76,13 @@ import java.io.InputStream;
  */
 public interface ImageRenderer {
     /**
+     * Determines if this image renderer implementation supports the given contentType
+     * @param contentType the image content type
+     * @return if the content type is supported
+     */
+    boolean canRender(String contentType);
+
+    /**
      * Load and buffer the image
      *
      * @param data the raw image stream
@@ -89,7 +96,7 @@ public interface ImageRenderer {
      * @param data the raw image bytes
      * @param contentType the content type
      */
-    void loadImage(byte data[], String contentType) throws IOException;
+    void loadImage(byte[] data, String contentType) throws IOException;
 
     /**
      * @return the dimension of the buffered image

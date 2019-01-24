@@ -11,7 +11,7 @@ H H * * 0
 '''
 
 def xercesUrl = 'http://repo1.maven.org/maven2/xerces/xercesImpl/2.6.1/xercesImpl-2.6.1.jar'
-def xercesLib = 'compile-lib/xercesImpl-2.6.1.jar'
+def xercesLib = './xercesImpl-2.6.1.jar'
 
 def poijobs = [
         [ name: 'POI-DSL-1.8', trigger: 'H */12 * * *'
@@ -25,18 +25,6 @@ def poijobs = [
           // the JDK is missing on some slaves so builds are unstable
           skipcigame: true
         ],
-        [ name: 'POI-DSL-1.9', jdk: '1.9', trigger: triggerSundays,
-          properties: ['-Djava9addmods=--add-modules=java.xml.bind',
-                       '-Djavadoc9addmods=--add-modules=java.xml.bind',
-                       '-Djava9addmodsvalue=-Dsun.reflect.debugModuleAccessChecks=true',
-                       '-Djava9addopens1=--add-opens=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED',
-                       '-Djava9addopens2=--add-opens=java.base/java.io=ALL-UNNAMED',
-                       '-Djava9addopens3=--add-opens=java.base/java.nio=ALL-UNNAMED',
-                       '-Djava9addopens4=--add-opens=java.base/java.lang=ALL-UNNAMED',
-                       '-Djava9addopens5=--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED',
-                       '-Djava.locale.providers=JRE,CLDR'],
-          skipcigame: true
-        ],
         [ name: 'POI-DSL-1.10', jdk: '1.10', trigger: triggerSundays,
           properties: ['-Djava9addmods=--add-modules=java.xml.bind',
                        '-Djavadoc9addmods=--add-modules=java.xml.bind',
@@ -46,15 +34,53 @@ def poijobs = [
                        '-Djava9addopens3=--add-opens=java.base/java.nio=ALL-UNNAMED',
                        '-Djava9addopens4=--add-opens=java.base/java.lang=ALL-UNNAMED',
                        '-Djava9addopens5=--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED',
+                       '-Djava9addopens6=--add-opens=java.base/java.lang=java.xml.bind',
                        '-Djava.locale.providers=JRE,CLDR'],
           skipcigame: true
         ],
-        [ name: 'POI-DSL-IBM-JDK', jdk: 'IBMJDK', trigger: triggerSundays,
-          // some OOXML tests fail with strange XML parsing errors and missing JCE unlimited strength requirements
-          disabled: true, skipcigame: true
+        [ name: 'POI-DSL-1.11', jdk: '1.11', trigger: triggerSundays,
+          // Nodes beam* do not yet have JDK 11 installed
+          slaveAdd: '&&!beam1&&!beam2&&!beam3&&!beam4&&!beam6&&!beam7&&!beam8&&!beam9&&!beam10&&!beam11&&!beam12&&!beam13&&!beam14&&!beam15&&!beam16',
+          properties: ['-Djava9addmodsvalue=-Dsun.reflect.debugModuleAccessChecks=true',
+                       '-Djava9addopens1=--add-opens=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED',
+                       '-Djava9addopens2=--add-opens=java.base/java.io=ALL-UNNAMED',
+                       '-Djava9addopens3=--add-opens=java.base/java.nio=ALL-UNNAMED',
+                       '-Djava9addopens4=--add-opens=java.base/java.lang=ALL-UNNAMED',
+                       '-Djava9addopens5=--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED',
+                       '-Djava.locale.providers=JRE,CLDR'],
+          skipcigame: true
+        ],
+        [ name: 'POI-DSL-1.12', jdk: '1.12', trigger: triggerSundays,
+          // Nodes beam* do not yet have JDK 12 installed
+          slaveAdd: '&&!beam1&&!beam2&&!beam3&&!beam4&&!beam6&&!beam7&&!beam8&&!beam9&&!beam10&&!beam11&&!beam12&&!beam13&&!beam14&&!beam15&&!beam16',
+          properties: ['-Djava9addmodsvalue=-Dsun.reflect.debugModuleAccessChecks=true',
+                       '-Djava9addopens1=--add-opens=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED',
+                       '-Djava9addopens2=--add-opens=java.base/java.io=ALL-UNNAMED',
+                       '-Djava9addopens3=--add-opens=java.base/java.nio=ALL-UNNAMED',
+                       '-Djava9addopens4=--add-opens=java.base/java.lang=ALL-UNNAMED',
+                       '-Djava9addopens5=--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED',
+                       '-Djava.locale.providers=JRE,CLDR'],
+          skipcigame: true
+        ],
+        [ name: 'POI-DSL-1.13', jdk: '1.13', trigger: triggerSundays,
+          // Nodes beam* do not yet have JDK 13 installed
+          slaveAdd: '&&!beam1&&!beam2&&!beam3&&!beam4&&!beam6&&!beam7&&!beam8&&!beam9&&!beam10&&!beam11&&!beam12&&!beam13&&!beam14&&!beam15&&!beam16',
+          properties: ['-Djava9addmodsvalue=-Dsun.reflect.debugModuleAccessChecks=true',
+                       '-Djava9addopens1=--add-opens=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED',
+                       '-Djava9addopens2=--add-opens=java.base/java.io=ALL-UNNAMED',
+                       '-Djava9addopens3=--add-opens=java.base/java.nio=ALL-UNNAMED',
+                       '-Djava9addopens4=--add-opens=java.base/java.lang=ALL-UNNAMED',
+                       '-Djava9addopens5=--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED',
+                       '-Djava.locale.providers=JRE,CLDR',
+                       // JaCoCo currently fails with "java.lang.NoSuchFieldException: $jacocoAccess",
+                       // need to review/check with newer JDK 13 builds or when at least JaCoCo 0.8.3
+                       '-Dcoverage.enabled=false'],
+          skipcigame: true
+        ],
+        [ name: 'POI-DSL-IBM-JDK', jdk: 'IBMJDK', trigger: triggerSundays, skipcigame: true
         ],
         [ name: 'POI-DSL-old-Xerces', trigger: triggerSundays,
-          shell: "mkdir -p compile-lib && test -f ${xercesLib} || wget -O ${xercesLib} ${xercesUrl}\n",
+          shell: "test -f ${xercesLib} || wget -O ${xercesLib} ${xercesUrl}\n",
           // the property triggers using Xerces as XML Parser and previously showed some exception that can occur
           properties: ["-Dadditionaljar=${xercesLib}"]
         ],
@@ -62,7 +88,8 @@ def poijobs = [
         ],
         [ name: 'POI-DSL-regenerate-javadoc', trigger: triggerSundays, javadoc: true
         ],
-        [ name: 'POI-DSL-API-Check', trigger: '@daily', apicheck: true
+        // disabled for 4.0.0 because we break compatibility on-purpose in a few places, e.g. for Java 9 compatibility
+        [ name: 'POI-DSL-API-Check', trigger: '@daily', apicheck: true, disabled: true
         ],
         [ name: 'POI-DSL-Gradle', trigger: triggerSundays, email: 'centic@apache.org', gradle: true,
           // Gradle will not run any tests if the code is up-to-date, therefore manually mark the files as updated
@@ -77,20 +104,51 @@ def poijobs = [
         ],
         [ name: 'POI-DSL-Windows-1.8', trigger: 'H */12 * * *', windows: true, slaves: 'Windows'
         ],
+        [ name: 'POI-DSL-Windows-1.12', jdk: '1.12', trigger: triggerSundays, windows: true, slaves: 'Windows',
+                properties: ['-Djava9addmodsvalue=-Dsun.reflect.debugModuleAccessChecks=true',
+                       '-Djava9addopens1=--add-opens=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED',
+                       '-Djava9addopens2=--add-opens=java.base/java.io=ALL-UNNAMED',
+                       '-Djava9addopens3=--add-opens=java.base/java.nio=ALL-UNNAMED',
+                       '-Djava9addopens4=--add-opens=java.base/java.lang=ALL-UNNAMED',
+                       '-Djava9addopens5=--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED',
+                       '-Djava.locale.providers=JRE,CLDR'],
+                skipcigame: true
+        ],
+        [ name: 'POI-DSL-Github-PullRequests', trigger: '', githubpr: true, skipcigame: true,
+          // ensure the file which is needed from the separate documentation module does exist
+          // as we are checking out from git, we do not have the reference checked out here
+          addShell: 'mkdir src/documentation\ntouch src/documentation/RELEASE-NOTES.txt'
+        ],
+]
+
+def xmlbeansjobs = [
+        [ name: 'POI-XMLBeans-DSL-1.6', jdk: '1.6', trigger: 'H */12 * * *', skipcigame: true,
+        ],
+        [ name: 'POI-XMLBeans-DSL-1.8', jdk: '1.8', trigger: triggerSundays, skipcigame: true,
+        ],
+        [ name: 'POI-XMLBeans-DSL-1.11', jdk: '1.11', trigger: triggerSundays, skipcigame: true,
+                disabled: true // XMLBeans does not yet compile with Java 11
+        ]
 ]
 
 def svnBase = 'https://svn.apache.org/repos/asf/poi/trunk'
+def xmlbeansSvnBase = 'https://svn.apache.org/repos/asf/xmlbeans/trunk'
+
 def defaultJdk = '1.8'
 def defaultTrigger = 'H/15 * * * *'     // check SCM every 60/15 = 4 minutes
 def defaultEmail = 'dev@poi.apache.org'
 def defaultAnt = 'Ant 1.9.9'
 // currently a lot of H?? slaves don't have Ant installed ... H21 seems to have a SVN problem
-def defaultSlaves = 'ubuntu&&!cloud-slave&&!H15&&!H17&&!H18&&!H24&&!ubuntu-4&&!H21'
+// H35 fails with ImageIO create cache file errors, although the java.io.tmpdir is writable
+def defaultSlaves = '(ubuntu||beam)&&!cloud-slave&&!H15&&!H17&&!H18&&!H24&&!ubuntu-4&&!H21&&!H35'
 
 def jdkMapping = [
+        '1.6': 'JDK 1.6 (latest)',
         '1.8': 'JDK 1.8 (latest)',
-        '1.9': 'JDK 1.9 (latest)',
-        '1.10': 'JDK 10 b36 (early access build)',
+        '1.10': 'JDK 10 (latest)',
+        '1.11': 'JDK 11 (latest)',
+        '1.12': 'JDK 12 (latest)',
+        '1.13': 'JDK 13 (latest)',
         'OpenJDK': 'OpenJDK 8 (on Ubuntu only) ',   // blank is required here until the name in the Jenkins instance is fixed!
         'IBMJDK': 'IBM 1.8 64-bit (on Ubuntu only)',
 ]
@@ -104,7 +162,7 @@ static def shellEx(def context, String cmd, def poijob) {
 }
 
 def defaultDesc = '''
-<img src="https://poi.apache.org/resources/images/project-logo.jpg" />
+<img src="https://poi.apache.org/images/project-header.png" />
 <p>
 Apache POI - the Java API for Microsoft Documents
 </p>
@@ -196,18 +254,22 @@ poijobs.each { poijob ->
         label(slaves)
         environmentVariables {
             env('LANG', 'en_US.UTF-8')
-            if(jdkKey == '1.9') {
-                // when using JDK 9 for running Ant, we need to provide more packages for the forbidden-api-checks task
+            if(jdkKey == '1.10') {
+                // when using JDK 9/10 for running Ant, we need to provide more modules for the forbidden-api-checks task
+                // on JDK 11 and newer there is no such module any more, so do not add it here
                 env('ANT_OPTS', '--add-modules=java.xml.bind --add-opens=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED')
             }
+            env('FORREST_HOME', poijob.windows ? 'f:\\jenkins\\tools\\forrest\\latest' : '/home/jenkins/tools/forrest/latest')
         }
         wrappers {
-            /* Plugin seems to be missing: Warning: (create_jobs.groovy, line 202) version 1.13 or later of plugin 'build-timeout' needs to be installed
             timeout {
                 absolute(180)
                 abortBuild()
                 writeDescription('Build was aborted due to timeout')
-            }*/
+            }
+            preBuildCleanup {
+                includePattern('**/ooxml-lib/ooxml*.jar')
+            }
             if(poijob.sonar) {
                 configure { project ->
                     project / buildWrappers << 'hudson.plugins.sonar.SonarBuildWrapper' {}
@@ -216,15 +278,49 @@ poijobs.each { poijob ->
         }
         jdk(jdkMapping.get(jdkKey))
         scm {
-            svn(svnBase) { svnNode ->
-                svnNode / browser(class: 'hudson.scm.browsers.ViewSVN') /
-                        url << 'http://svn.apache.org/viewcvs.cgi/?root=Apache-SVN'
+            if (poijob.githubpr) {
+                git {
+                    remote {
+                        github('apache/poi')
+                        refspec('+refs/pull/*:refs/remotes/origin/pr/*')
+                    }
+                    branch('${sha1}')
+                }
+            } else {
+                svn(svnBase) { svnNode ->
+                    svnNode / browser(class: 'hudson.scm.browsers.ViewSVN') /
+                            url << 'http://svn.apache.org/viewcvs.cgi/?root=Apache-SVN'
+                }
             }
         }
         checkoutRetryCount(3)
 
-        triggers {
-            scm(trigger)
+        if (poijob.githubpr) {
+            throttleConcurrentBuilds {
+                maxPerNode(1)
+                maxTotal(1)
+            }
+            parameters {
+                /* plugin not available:
+                gitParam('sha1') {
+                    description('Pull request')
+                    type('BRANCH')
+                }*/
+                stringParam('sha1', 'origin/pr/9/head', 'Provide a branch-spec, e.g. origin/pr/9/head')
+            }
+            triggers {
+                githubPullRequest {
+                    admins(['centic9', 'poi-benchmark', 'tballison', 'gagravarr', 'onealj', 'pjfanning', 'Alain-Bearez'])
+                    userWhitelist(['centic9', 'poi-benchmark', 'tballison', 'gagravarr', 'onealj', 'pjfanning', 'Alain-Bearez'])
+                    orgWhitelist(['apache'])
+                    cron('H/5 * * * *')
+                    triggerPhrase('OK to test')
+                }
+            }
+        } else {
+            triggers {
+                scm(trigger)
+            }
         }
 
         def shellcmds = (poijob.windows ? shellCmdsWin : shellCmdsUnix).replace('POIJOBSHELL', poijob.shell ?: '')
@@ -282,7 +378,7 @@ poijobs.each { poijob ->
                     //properties(poijob.properties ?: '')
                     antInstallation(antRT)
                 }
-                shellEx(delegate, 'zip -r build/javadocs.zip build/tmp/site/build/site/apidocs', poijob)
+                shellEx(delegate, 'zip -r build/javadocs.zip build/site/apidocs', poijob)
             }
             publishers {
                 if (!poijob.skipcigame) {
@@ -341,7 +437,7 @@ poijobs.each { poijob ->
                     }
                 } else if (poijob.noScratchpad) {
                     ant {
-                        targets(['clean', 'compile-all'] + (poijob.properties ?: []))
+                        targets(['clean', 'compile'] + (poijob.properties ?: []))
                         prop('coverage.enabled', true)
                         antInstallation(antRT)
                     }
@@ -401,6 +497,87 @@ poijobs.each { poijob ->
     }
 }
 
+xmlbeansjobs.each { xjob ->
+    def jdkKey = xjob.jdk ?: defaultJdk
+    def trigger = xjob.trigger ?: defaultTrigger
+    def email = xjob.email ?: defaultEmail
+    def slaves = xjob.slaves ?: defaultSlaves + (xjob.slaveAdd ?: '')
+    def antRT = defaultAnt + (xjob.windows ? ' (Windows)' : '')
+
+    job(xjob.name) {
+        if (xjob.disabled) {
+            disabled()
+        }
+
+        description( defaultDesc + (xjob.apicheck ? apicheckDesc : sonarDesc) )
+        logRotator {
+            numToKeep(5)
+            artifactNumToKeep(1)
+        }
+        label(slaves)
+        environmentVariables {
+            env('LANG', 'en_US.UTF-8')
+            if(jdkKey == '1.10') {
+                // when using JDK 9/10 for running Ant, we need to provide more modules for the forbidden-api-checks task
+                // on JDK 11 and newer there is no such module any more, so do not add it here
+                env('ANT_OPTS', '--add-modules=java.xml.bind --add-opens=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED')
+            }
+            env('FORREST_HOME', xjob.windows ? 'f:\\jenkins\\tools\\forrest\\latest' : '/home/jenkins/tools/forrest/latest')
+        }
+        wrappers {
+            timeout {
+                absolute(180)
+                abortBuild()
+                writeDescription('Build was aborted due to timeout')
+            }
+        }
+        jdk(jdkMapping.get(jdkKey))
+        scm {
+            svn(xmlbeansSvnBase) { svnNode ->
+                svnNode / browser(class: 'hudson.scm.browsers.ViewSVN') /
+                        url << 'http://svn.apache.org/viewcvs.cgi/?root=Apache-SVN'
+            }
+        }
+        checkoutRetryCount(3)
+
+        triggers {
+            scm(trigger)
+        }
+
+        def shellcmds = (xjob.windows ? shellCmdsWin : shellCmdsUnix).replace('POIJOBSHELL', xjob.shell ?: '')
+
+        // Create steps and publishers depending on the type of Job that is selected
+        steps {
+            shellEx(delegate, shellcmds, xjob)
+            if(xjob.addShell) {
+                shellEx(delegate, xjob.addShell, xjob)
+            }
+            ant {
+                targets(['clean'])
+                antInstallation(antRT)
+            }
+            ant {
+                targets(['test'])
+                antInstallation(antRT)
+            }
+            ant {
+                targets(['package'])
+                antInstallation(antRT)
+            }
+        }
+        publishers {
+            archiveArtifacts('build/**')
+
+            if (!xjob.skipcigame) {
+                configure { project ->
+                    project / publishers << 'hudson.plugins.cigame.GamePublisher' {}
+                }
+            }
+            mailer(email, false, false)
+        }
+    }
+}
+
 /*
 Add a special job which spans a two-dimensional matrix of all JDKs that we want to use and
 all slaves that we would like to use and test if the java and ant binaries are available
@@ -408,20 +585,18 @@ on that machine correctly.
  */
 matrixJob('POI-DSL-Test-Environment') {
     description(
-            '''
-Check installed version of Java/Ant on all build-nodes
+'''Check installed version of Java/Ant on all build-nodes
 
 This job is used to verify which machines actually have the required programs installed.
 
-Unfortunately we often see builds break because of changes/new machines...'''
-    )
+Unfortunately we often see builds break because of changes/new machines...''')
 
     /*throttleConcurrentBuilds {
         maxPerNode(1)
         maxTotal(1)
     }*/
     logRotator {
-        numToKeep(5)
+        numToKeep(1)
         artifactNumToKeep(1)
     }
     axes {
@@ -430,42 +605,62 @@ Unfortunately we often see builds break because of changes/new machines...'''
                 'OpenJDK 8 (on Ubuntu only) ',   // blank is required here until the name in the Jenkins instance is fixed!
                 'IBM 1.8 64-bit (on Ubuntu only)',
 
-                'JDK 1.9 (latest)',
-                'JDK 9 b181',
-                'JDK 9 b181 (unlimited security)',
+                'JDK 10 (latest)',
+                'JDK 10 b46 (Windows Only)',
+                'OpenJDK 10.0.2 (on Ubuntu only)',
 
-                'JDK 10 b36 (early access build)',
-                'JDK 10 b37 (early access build) (Windows Only)'
+                'JDK 11 (latest)',
+                'JDK 11 b23 (early access build) (Windows Only)',
+
+                'JDK 12 (latest)',
+                'OpenJDK 12 b18 (early access build)'
         )
-        label('Nodes',
-                'beam1','beam2','beam3','beam4','beam5','beam6','beam7','beam8',
-                'freebsd1',
-                'H0','H1','H10','H11','H12','H13','H14','H15','H16','H17','H18','H19',
-                'H2','H20','H21','H22','H23','H24','H25','H26','H27','H28','H29',
-                'H3','H30','H31','H32','H33','H34','H35',
-                'H4','H5','H6','H7','H8','H9',
-                'qnode1','qnode2','qnode3',
-                'ubuntu-1','ubuntu-2','ubuntu-4','ubuntu-6','ubuntu-eu2','ubuntu-eu3','ubuntu-ppc64le','ubuntu-us1',
-                'windows-2012-1','windows-2012-2','windows-2012-3','windows-2016-1'
-        )
+        elasticAxis {
+            name('Nodes')
+            labelString('!cloud-slave&&!H15&&!H17&&!H18&&!H24&&!ubuntu-4&&!H21&&!H35&&!websites1&&!couchdb&&!plc4x&&!ppc64le')
+            ignoreOffline(true)
+        }
     }
     steps {
-        /*if (poijob.windows) {
-            context.batchFile(cmd)
-        } else {*/
-        shell('''
-which javac
+        conditionalSteps {
+            condition {
+                fileExists('/usr', BaseDir.WORKSPACE)
+                runner('DontRun')
+                steps {
+                    shell(
+'''which javac
 javac -version
 echo '<?xml version="1.0"?><project name="POI Build" default="test"><target name="test"><echo>Using Ant: ${ant.version} from ${ant.home}</echo></target></project>' > build.xml
 ''')
-        //}
-        ant {
-            antInstallation(defaultAnt)
-        }
-    }
+                    ant {
+                        antInstallation(defaultAnt)
+                    }
 
-    publishers {
-        mailer('centic@poi.apache.org' /* defaultEmail */, false, false)
+                }
+            }
+        }
+        conditionalSteps {
+            condition {
+                fileExists('c:\\windows', BaseDir.WORKSPACE)
+                runner('DontRun')
+                steps {
+                    batchFile {
+                        command(
+'''@echo off
+echo .
+where javac.exe
+echo .
+javac -version
+echo .
+echo ^<?xml version=^"1.0^"?^>^<project name=^"POI Build^" default=^"test^"^>^<target name=^"test^"^>^<echo^>Using Ant: ${ant.version} from ${ant.home}^</echo^>^</target^>^</project^> > build.xml
+''')
+                    }
+                    ant {
+                        antInstallation(defaultAnt + ' (Windows)')
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -486,7 +681,24 @@ dashboardView("P/POI-new") {
         //lastSuccessDescription()
         jacoco()
     }
-    description("Jobs related to building/testing Apache POI")
+    description("<table>\n" +
+            "  <tr>\n" +
+            "    <td><img src=\"https://poi.apache.org/images/project-header.png\" /></td>\n" +
+            "    <td>  \n" +
+            "      <p>Apache POI - the Java API for Microsoft Documents</p>\n" +
+            "      <p><b>Most of the POI Jobs are automatically generated by Jenkins Job DSL\n" +
+            "        at <a href=\"https://svn.apache.org/repos/asf/poi/trunk/jenkins\">https://svn.apache.org/repos/asf/poi/trunk/jenkins</a>,<br/>\n" +
+            "        see <a href=\"https://github.com/jenkinsci/job-dsl-plugin/wiki\">https://github.com/jenkinsci/job-dsl-plugin/wiki</a>\n" +
+            "        for more details about the DSL.</b>\n" +
+            "      </p>\n" +
+            "      <p>\n" +
+            "      <b><a href=\"job/POI-DSL-1.8/lastSuccessfulBuild/findbugsResult/\" target=\"_blank\">Findbugs report of latest build</a></b> -\n" +
+            "      <b><a href=\"https://builds.apache.org/analysis/dashboard?id=org.apache.poi%3Apoi-parent&did=1\" target=\"_blank\">Sonar reports</a></b> -\n" +
+            "      <b><a href=\"job/POI-DSL-1.8/lastSuccessfulBuild/artifact/build/coverage/index.html\" target=\"_blank\">Coverage of latest build</a></b>\n" +
+            "      </p>\n" +
+            "    </td>\n" +
+            "  </tr>\n" +
+            "</table>")
     filterBuildQueue(false)
     filterExecutors(false)
 

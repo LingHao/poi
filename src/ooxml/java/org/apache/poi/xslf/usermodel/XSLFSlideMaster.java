@@ -16,14 +16,14 @@
 ==================================================================== */
 package org.apache.poi.xslf.usermodel;
 
-import static org.apache.poi.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.sl.usermodel.MasterSheet;
 import org.apache.poi.sl.usermodel.Placeholder;
@@ -32,7 +32,6 @@ import org.apache.xmlbeans.XmlException;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTColorMapping;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextListStyle;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTBackground;
-import org.openxmlformats.schemas.presentationml.x2006.main.CTPlaceholder;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideMaster;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTSlideMasterTextStyles;
 import org.openxmlformats.schemas.presentationml.x2006.main.SldMasterDocument;
@@ -43,7 +42,6 @@ import org.openxmlformats.schemas.presentationml.x2006.main.SldMasterDocument;
 *  Within a slide master slide are contained all elements
 * that describe the objects and their corresponding formatting
 * for within a presentation slide.
-* </p>
 * <p>
 * Within a slide master slide are two main elements.
 * The cSld element specifies the common slide elements such as shapes and
@@ -52,21 +50,12 @@ import org.openxmlformats.schemas.presentationml.x2006.main.SldMasterDocument;
 * within a slide master slide specify other properties for within a presentation slide
 * such as color information, headers and footers, as well as timing and
 * transition information for all corresponding presentation slides.
-* </p>
- *
- * @author Yegor Kozlov
 */
 @Beta
  public class XSLFSlideMaster extends XSLFSheet
  implements MasterSheet<XSLFShape,XSLFTextParagraph> {
 	private CTSlideMaster _slide;
     private Map<String, XSLFSlideLayout> _layouts;
-    private XSLFTheme _theme;
-
-    XSLFSlideMaster() {
-        super();
-        _slide = CTSlideMaster.Factory.newInstance();
-    }
 
     /**
      * @since POI 3.14-Beta1
@@ -142,23 +131,9 @@ import org.openxmlformats.schemas.presentationml.x2006.main.SldMasterDocument;
     }
 
 
-    @Override
-    public XSLFTheme getTheme(){
-        if(_theme == null){
-            for (POIXMLDocumentPart p : getRelations()) {
-                if (p instanceof XSLFTheme){
-                    _theme = (XSLFTheme)p;
-                    CTColorMapping cmap = _slide.getClrMap();
-                    if(cmap != null){
-                        _theme.initColorMap(cmap);
-                    }
-                    break;
-                }
-            }
-        }
-        return _theme;
-    }
 
+
+    @SuppressWarnings(value = "unused")
     protected CTTextListStyle getTextProperties(Placeholder textType) {
         CTTextListStyle props;
         CTSlideMasterTextStyles txStyles = getXmlObject().getTxStyles();
@@ -178,22 +153,6 @@ import org.openxmlformats.schemas.presentationml.x2006.main.SldMasterDocument;
         return props;
     }
 
-    /**
-     * Render this sheet into the supplied graphics object
-     *
-     */
-    @Override
-    protected boolean canDraw(XSLFShape shape){
-        if(shape instanceof XSLFSimpleShape){
-            XSLFSimpleShape txt = (XSLFSimpleShape)shape;
-            CTPlaceholder ph = txt.getCTPlaceholder();
-            if(ph != null) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     @Override
     public XSLFBackground getBackground() {
         CTBackground bg = _slide.getCSld().getBg();
@@ -202,5 +161,15 @@ import org.openxmlformats.schemas.presentationml.x2006.main.SldMasterDocument;
         } else {
             return null;
         }
+    }
+
+    @Override
+    boolean isSupportTheme() {
+        return true;
+    }
+
+    @Override
+    CTColorMapping getColorMapping() {
+        return _slide.getClrMap();
     }
 }

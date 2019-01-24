@@ -22,7 +22,7 @@ import java.util.*;
 
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.exceptions.InvalidOperationException;
-import org.apache.poi.util.DocumentHelper;
+import org.apache.poi.ooxml.util.DocumentHelper;
 import org.apache.poi.util.POILogFactory;
 import org.apache.poi.util.POILogger;
 import org.w3c.dom.Attr;
@@ -45,12 +45,12 @@ public final class PackageRelationshipCollection implements
     /**
      * Package relationships ordered by ID.
      */
-    private TreeMap<String, PackageRelationship> relationshipsByID;
+    private final TreeMap<String, PackageRelationship> relationshipsByID = new TreeMap<>();
 
     /**
      * Package relationships ordered by type.
      */
-    private TreeMap<String, PackageRelationship> relationshipsByType;
+    private final TreeMap<String, PackageRelationship> relationshipsByType = new TreeMap<>();
 
     /**
      * A lookup of internal relationships to avoid
@@ -88,8 +88,6 @@ public final class PackageRelationshipCollection implements
      * Constructor.
      */
     PackageRelationshipCollection() {
-        relationshipsByID = new TreeMap<>();
-        relationshipsByType = new TreeMap<>();
     }
 
     /**
@@ -149,8 +147,6 @@ public final class PackageRelationshipCollection implements
      */
     public PackageRelationshipCollection(OPCPackage container, PackagePart part)
             throws InvalidFormatException {
-        this();
-
         if (container == null)
             throw new IllegalArgumentException("container needs to be specified");
 
@@ -197,6 +193,9 @@ public final class PackageRelationshipCollection implements
      *            The relationship to add.
      */
     public void addRelationship(PackageRelationship relPart) {
+        if (relPart == null || relPart.getId() == null || relPart.getId().isEmpty()) {
+            throw new IllegalArgumentException("invalid relationship part/id");
+        }
         relationshipsByID.put(relPart.getId(), relPart);
         relationshipsByType.put(relPart.getRelationshipType(), relPart);
     }
@@ -231,8 +230,7 @@ public final class PackageRelationshipCollection implements
 
         PackageRelationship rel = new PackageRelationship(container,
                 sourcePart, targetUri, targetMode, relationshipType, id);
-        relationshipsByID.put(rel.getId(), rel);
-        relationshipsByType.put(rel.getRelationshipType(), rel);
+        addRelationship(rel);
         if (targetMode == TargetMode.INTERNAL){
             internalRelationshipsByTargetName.put(targetUri.toASCIIString(), rel);
         }
@@ -246,13 +244,11 @@ public final class PackageRelationshipCollection implements
      *            The relationship ID to remove.
      */
     public void removeRelationship(String id) {
-        if (relationshipsByID != null && relationshipsByType != null) {
-            PackageRelationship rel = relationshipsByID.get(id);
-            if (rel != null) {
-                relationshipsByID.remove(rel.getId());
-                relationshipsByType.values().remove(rel);
-                internalRelationshipsByTargetName.values().remove(rel);
-            }
+        PackageRelationship rel = relationshipsByID.get(id);
+        if (rel != null) {
+            relationshipsByID.remove(rel.getId());
+            relationshipsByType.values().remove(rel);
+            internalRelationshipsByTargetName.values().remove(rel);
         }
     }
 
@@ -415,28 +411,23 @@ public final class PackageRelationshipCollection implements
 
     @Override
     public String toString() {
-        String str;
-        if (relationshipsByID == null) {
-            str = "relationshipsByID=null";
-        } else {
-            str = relationshipsByID.size() + " relationship(s) = [";
-        }
+        String str = relationshipsByID.size() + " relationship(s) = [";
         if ((relationshipPart != null) && (relationshipPart._partName != null)) {
-            str = str + "," + relationshipPart._partName;
+            str += relationshipPart._partName;
         } else {
-            str = str + ",relationshipPart=null";
+            str += "relationshipPart=null";
         }
 
         // Source of this relationship
         if ((sourcePart != null) && (sourcePart._partName != null)) {
-            str = str + "," + sourcePart._partName;
+            str += "," + sourcePart._partName;
         } else {
-            str = str + ",sourcePart=null";
+            str += ",sourcePart=null";
         }
         if (partName != null) {
-            str = str + "," + partName;
+            str += "," + partName;
         } else {
-            str = str + ",uri=null)";
+            str += ",uri=null)";
         }
         return str + "]";
     }

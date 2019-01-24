@@ -34,7 +34,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.poi.hslf.usermodel.HSLFSlideShow;
 import org.apache.poi.sl.usermodel.Slide;
 import org.apache.poi.sl.usermodel.SlideShow;
 import org.apache.poi.sl.usermodel.SlideShowFactory;
@@ -96,9 +95,9 @@ public class TestTable {
     }
 
     @Test
-    public void directionHSLF() throws IOException {
+    public void directionHSLF() throws IOException, ReflectiveOperationException {
         assumeFalse(xslfOnly());
-        SlideShow<?,?> ppt1 = new HSLFSlideShow();
+        SlideShow<?,?> ppt1 = (SlideShow<?,?>)Class.forName("org.apache.poi.hslf.usermodel.HSLFSlideShow").newInstance();
         testTextDirection(ppt1);
         ppt1.close();
     }
@@ -111,12 +110,12 @@ public class TestTable {
     }
     
     private void testTextDirection(SlideShow<?,?> ppt1) throws IOException {
-        
-        TextDirection tds[] = {
-            TextDirection.HORIZONTAL,
-            TextDirection.VERTICAL,
-            TextDirection.VERTICAL_270,
-            // TextDirection.STACKED is not supported on HSLF
+
+        TextDirection[] tds = {
+                TextDirection.HORIZONTAL,
+                TextDirection.VERTICAL,
+                TextDirection.VERTICAL_270,
+                // TextDirection.STACKED is not supported on HSLF
         };
         
         TableShape<?,?> tbl1 = ppt1.createSlide().createTable(1, 3);
@@ -149,7 +148,7 @@ public class TestTable {
     
     @Test
     public void tableSpan() throws IOException {
-        String files[] = (xslfOnly()) ? new String[]{ "bug60993.pptx" } : new String[]{ "bug60993.pptx", "bug60993.ppt" };
+        String[] files = (xslfOnly()) ? new String[]{"bug60993.pptx"} : new String[]{"bug60993.pptx", "bug60993.ppt"};
         for (String f : files) {
             SlideShow<?,?> ppt = openSampleSlideshow(f);
             Slide<?,?> slide = ppt.getSlides().get(0);

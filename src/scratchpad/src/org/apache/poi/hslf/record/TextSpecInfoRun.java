@@ -173,27 +173,27 @@ public class TextSpecInfoRun {
      * @throws java.io.IOException if an error occurs.
      */
     public void writeOut(OutputStream out) throws IOException {
-        final byte buf[] = new byte[4];
+        final byte[] buf = new byte[4];
         LittleEndian.putInt(buf, 0, length);
         out.write(buf);
         LittleEndian.putInt(buf, 0, mask);
         out.write(buf);
-        Object flds[] = {
-            spellFld, spellInfo, "spell info",
-            langFld, langId, "lang id",
-            altLangFld, altLangId, "alt lang id",
-            bidiFld, bidi, "bidi",
-            pp10extFld, pp10extMask, "pp10 extension field",
-            smartTagFld, smartTagsBytes, "smart tags"
+        Object[] flds = {
+                spellFld, spellInfo, "spell info",
+                langFld, langId, "lang id",
+                altLangFld, altLangId, "alt lang id",
+                bidiFld, bidi, "bidi",
+                pp10extFld, pp10extMask, "pp10 extension field",
+                smartTagFld, smartTagsBytes, "smart tags"
         };
         
-        for (int i=0; i<flds.length; i+=3) {
+        for (int i=0; i<flds.length-1; i+=3) {
             BitField fld = (BitField)flds[i+0];
             Object valO = flds[i+1];
             if (!fld.isSet(mask)) continue;
             boolean valid;
             if (valO instanceof byte[]) {
-                byte bufB[] = (byte[])valO;
+                byte[] bufB = (byte[]) valO;
                 valid = bufB.length > 0;
                 out.write(bufB);
             } else if (valO instanceof Integer) {
@@ -210,7 +210,8 @@ public class TextSpecInfoRun {
                 valid = false;
             }
             if (!valid) {
-                throw new IOException(flds[i+2]+" is activated, but its value is invalid");
+                Object fval = (i + 2) < flds.length ? flds[i + 2] : null;
+                throw new IOException(fval + " is activated, but its value is invalid");
             }
         }
     }        

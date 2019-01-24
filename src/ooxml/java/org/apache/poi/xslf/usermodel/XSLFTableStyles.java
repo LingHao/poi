@@ -23,7 +23,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.poi.POIXMLDocumentPart;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.util.Beta;
 import org.apache.xmlbeans.XmlException;
@@ -50,9 +50,9 @@ public class XSLFTableStyles extends POIXMLDocumentPart implements Iterable<XSLF
         TblStyleLstDocument styleDoc = TblStyleLstDocument.Factory.parse(is);
         is.close();
         _tblStyleLst = styleDoc.getTblStyleLst();
-        CTTableStyle[] tblStyleArray = _tblStyleLst.getTblStyleArray();
-        _styles = new ArrayList<>(tblStyleArray.length);
-        for(CTTableStyle c : tblStyleArray){
+        List<CTTableStyle> tblStyles = _tblStyleLst.getTblStyleList();
+        _styles = new ArrayList<>(tblStyles.size());
+        for(CTTableStyle c : tblStyles){
             _styles.add(new XSLFTableStyle(c));
         }
     }

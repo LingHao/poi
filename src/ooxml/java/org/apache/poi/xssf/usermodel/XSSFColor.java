@@ -33,11 +33,12 @@ public class XSSFColor extends ExtendedColor {
     private final IndexedColorMap indexedColorMap;
 
     /**
-     * @param color
-     * @param map
+     * @param color The ooxml color object to use
+     * @param map The IndexedColorMap to use instead of the default one
      * @return null if color is null, new instance otherwise
      */
     public static XSSFColor from(CTColor color, IndexedColorMap map) {
+        //noinspection deprecation
         return color == null ? null : new XSSFColor(color, map);
     }
     
@@ -47,7 +48,7 @@ public class XSSFColor extends ExtendedColor {
      * @deprecated 3.17 beta 1 - pass the workbook styles indexed color map, if any
      */
     @Deprecated
-    @Removal(version="3.19")
+    @Removal(version="4.2")
     public XSSFColor(CTColor color) {
         this(color, new DefaultIndexedColorMap());
     }
@@ -59,6 +60,7 @@ public class XSSFColor extends ExtendedColor {
      * @deprecated 4.0.0 - use the factory {@link #from(CTColor, IndexedColorMap)} method instead to check for null CTColor instances.  Make private eventually
      */
     @Deprecated
+    @Removal(version = "4.2")
     public XSSFColor(CTColor color, IndexedColorMap map) {
         this.ctColor = color;
         this.indexedColorMap = map;
@@ -72,23 +74,35 @@ public class XSSFColor extends ExtendedColor {
      * @see #from(CTColor, IndexedColorMap)
      */
     @Deprecated
-    @Removal(version="4.1")
+    @Removal(version="4.2")
     public XSSFColor() {
         this(CTColor.Factory.newInstance(), new DefaultIndexedColorMap());
     }
 
     /**
      * new color with the given indexed color map
-     * @param colorMap
+     * @param colorMap The IndexedColorMap to use instead of the default one
      */
     public XSSFColor(IndexedColorMap colorMap) {
+        //noinspection deprecation
         this(CTColor.Factory.newInstance(), colorMap);
     }
-    
+
+    /**
+     * Create an instance of XSSFColor from the awt Color
+     * @param clr awt Color
+     * @deprecated 3.17 beta 1 - pass the workbook styles indexed color map, if any
+     */
+    @Deprecated
+    @Removal(version="4.2")
+    public XSSFColor(java.awt.Color clr) {
+        this(clr, new DefaultIndexedColorMap());
+    }
+
     /**
      * TEST ONLY
      * @param clr awt Color
-     * @param map 
+     * @param map The IndexedColorMap to use instead of the default one
      */
     public XSSFColor(java.awt.Color clr, IndexedColorMap map) {
         this(map);
@@ -101,6 +115,7 @@ public class XSSFColor extends ExtendedColor {
      * @param colorMap The IndexedColorMap to use instead of the default one
      */
     public XSSFColor(byte[] rgb, IndexedColorMap colorMap) {
+        //noinspection deprecation
         this(CTColor.Factory.newInstance(), colorMap);
         ctColor.setRgb(rgb);
     }
@@ -110,6 +125,7 @@ public class XSSFColor extends ExtendedColor {
      * @param colorMap The IndexedColorMap to use instead of the default one
      */
     public XSSFColor(IndexedColors indexedColor, IndexedColorMap colorMap) {
+        //noinspection deprecation
         this(CTColor.Factory.newInstance(), colorMap);
         ctColor.setIndexed(indexedColor.index);
     }
